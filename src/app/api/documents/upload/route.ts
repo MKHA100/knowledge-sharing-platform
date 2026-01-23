@@ -10,8 +10,6 @@ import type { ApiResponse, Document } from "@/types";
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
 
-  console.log("[Upload API] Starting upload, userId:", userId);
-
   if (!userId) {
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: "Unauthorized" },
@@ -28,10 +26,7 @@ export async function POST(request: NextRequest) {
     .eq("clerk_id", userId)
     .single();
 
-  console.log("[Upload API] User lookup result:", { user, userError });
-
   if (!user) {
-    console.error("[Upload API] User not found for clerk_id:", userId);
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: "User not found" },
       { status: 404 },
@@ -110,8 +105,6 @@ export async function POST(request: NextRequest) {
           "documents",
         );
 
-        console.log("[Upload API] R2 upload successful:", uploaded);
-
         // User has verified the details, so auto-approve
         // Only image uploads (handled separately) go to admin
         const status = "approved";
@@ -128,24 +121,13 @@ export async function POST(request: NextRequest) {
           status,
         };
 
-        console.log(
-          "[Upload API] Attempting database insert with:",
-          insertData,
-        );
-
         const { data: document, error: insertError } = await supabase
           .from("documents")
           .insert(insertData)
           .select()
           .single();
 
-        console.log("[Upload API] Database insert result:", {
-          document,
-          insertError,
-        });
-
         if (insertError) {
-          console.error("[Upload API] Database insert error:", insertError);
           errors.push(`${file.name}: ${insertError.message}`);
           continue;
         }

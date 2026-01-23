@@ -58,8 +58,6 @@ export async function GET(request: NextRequest) {
 
   // Fallback to query builder if RPC fails
   if (rpcError) {
-    console.log("Using fallback search due to RPC error");
-
     let queryBuilder = supabase
       .from("documents")
       .select(

@@ -114,13 +114,6 @@ export default function AdminDashboard() {
             api.documents.list({}), // Fetch all documents without limit
           ]);
 
-        console.log("API Responses:", {
-          pending: pendingRes,
-          downvoted: downvotedRes,
-          users: usersRes,
-          documents: documentsRes,
-        });
-
         if (pendingRes.success && pendingRes.data) {
           setApiPending(pendingRes.data);
         }
@@ -130,11 +123,9 @@ export default function AdminDashboard() {
         if (usersRes.success && usersRes.data) {
           setApiUsers(usersRes.data.users || []);
         }
-        // FIX: Extract items from paginated response
+        // Extract items from paginated response
         if (documentsRes.success && documentsRes.data) {
-          console.log("Documents Response Data:", documentsRes.data);
           const documents = documentsRes.data.items || documentsRes.data || [];
-          console.log("Extracted documents:", documents, "Length:", documents.length);
           setApiDocuments(Array.isArray(documents) ? documents : []);
         } else {
           console.error("Documents fetch failed:", documentsRes);
@@ -292,13 +283,19 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSendComplement = async (userId: string, documentId: string, message: string) => {
+  // Handler for sending compliments to users
+  const handleSendComplement = async (
+    userId: string, 
+    documentId: string, 
+    message: string,
+    happinessLevel: "helpful" | "very_helpful" | "life_saver" = "very_helpful"
+  ) => {
     try {
       const result = await api.admin.complement({
         documentId,
         userId,
         senderDisplayName: "Admin",
-        happinessLevel: "very_helpful",
+        happinessLevel,
         message,
       });
 

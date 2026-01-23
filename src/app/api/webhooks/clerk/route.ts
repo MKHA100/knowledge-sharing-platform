@@ -81,11 +81,20 @@ export async function POST(req: Request) {
     case "user.deleted": {
       const { id } = evt.data;
 
-      // Set uploader to null for documents (keeps them as Anonymous)
-      await supabase
-        .from("documents")
-        .update({ uploader_id: null })
-        .eq("uploader_id", id);
+      // First, get the user's Supabase ID before deletion
+      const { data: userToDelete } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", id)
+        .single();
+
+      if (userToDelete) {
+        // Set uploader to null for documents (keeps them as Anonymous)
+        await supabase
+          .from("documents")
+          .update({ uploader_id: null })
+          .eq("uploader_id", userToDelete.id);
+      }
 
       // Delete user
       const { error } = await supabase

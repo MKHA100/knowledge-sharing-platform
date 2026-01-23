@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
         type: "thank_you",
         title: `${senderInfo?.name || "Someone"} thanked you!`,
         message: trimmedMessage,
+        action_url: `/doc/${documentId}`,
         is_read: false,
       });
 

@@ -658,20 +658,22 @@ function UploadContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Image Upload Confirmation</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                You have selected <strong>{imageFiles.length} image file(s)</strong>
-                {pdfFiles.length + wordFiles.length > 0 && (
-                  <> and <strong>{pdfFiles.length + wordFiles.length} document file(s)</strong></>
-                )}.
-              </p>
-              <p>
-                Images will be sent to our admin team for review and compilation into a 
-                professional document. This process typically takes 24-48 hours.
-              </p>
-              <p className="text-sm font-medium">
-                Would you like to proceed with sending these images to the admin team?
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You have selected <strong>{imageFiles.length} image file(s)</strong>
+                  {pdfFiles.length + wordFiles.length > 0 && (
+                    <> and <strong>{pdfFiles.length + wordFiles.length} document file(s)</strong></>
+                  )}.
+                </p>
+                <p>
+                  Images will be sent to our admin team for review and compilation into a 
+                  professional document. This process typically takes 24-48 hours.
+                </p>
+                <p className="text-sm font-medium">
+                  Would you like to proceed with sending these images to the admin team?
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

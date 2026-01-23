@@ -122,8 +122,6 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("Successfully created pending_images record:", insertData);
-
     return NextResponse.json<
       ApiResponse<{ message: string; fileCount: number; status: string }>
     >({

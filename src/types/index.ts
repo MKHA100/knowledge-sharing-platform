@@ -88,7 +88,6 @@ export interface Document {
   file_path: string;
   file_size: number | null;
   page_count: number | null;
-  description: string | null;
   // Categorization (simplified schema)
   type: DocumentType | null;
   subject: SubjectType | null;

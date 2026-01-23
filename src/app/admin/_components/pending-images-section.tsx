@@ -9,6 +9,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
 export interface PendingImageBatch {
@@ -38,6 +48,9 @@ export function PendingImagesSection({
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [processDialogOpen, setProcessDialogOpen] = useState(false);
+  const [actionBatchId, setActionBatchId] = useState<string | null>(null);
 
   const handleDownload = async (id: string) => {
     setDownloading(id);
@@ -48,29 +61,39 @@ export function PendingImagesSection({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this image batch? This action cannot be undone.")) {
-      return;
-    }
+  const handleDeleteClick = (id: string) => {
+    setActionBatchId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!actionBatchId) return;
     
-    setDeleting(id);
+    setDeleteDialogOpen(false);
+    setDeleting(actionBatchId);
     try {
-      await onDelete(id);
+      await onDelete(actionBatchId);
     } finally {
       setDeleting(null);
+      setActionBatchId(null);
     }
   };
 
-  const handleMarkProcessed = async (id: string) => {
-    if (!confirm("Mark this batch as processed? This will delete the images from storage.")) {
-      return;
-    }
+  const handleMarkProcessedClick = (id: string) => {
+    setActionBatchId(id);
+    setProcessDialogOpen(true);
+  };
+
+  const handleMarkProcessedConfirm = async () => {
+    if (!actionBatchId) return;
     
-    setProcessing(id);
+    setProcessDialogOpen(false);
+    setProcessing(actionBatchId);
     try {
-      await onMarkProcessed(id);
+      await onMarkProcessed(actionBatchId);
     } finally {
       setProcessing(null);
+      setActionBatchId(null);
     }
   };
 
@@ -174,7 +197,7 @@ export function PendingImagesSection({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleMarkProcessed(batch.id)}
+                      onClick={() => handleMarkProcessedClick(batch.id)}
                       disabled={processing === batch.id || downloading === batch.id}
                       className="gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                     >
@@ -184,7 +207,7 @@ export function PendingImagesSection({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(batch.id)}
+                      onClick={() => handleDeleteClick(batch.id)}
                       disabled={deleting === batch.id || processing === batch.id}
                       className="gap-1.5 text-rose-600 hover:text-rose-700"
                     >
@@ -198,6 +221,42 @@ export function PendingImagesSection({
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Image Batch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this image batch? This action cannot be undone and the images will be permanently removed from storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-rose-600 hover:bg-rose-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mark Processed Confirmation Dialog */}
+      <AlertDialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Processed</AlertDialogTitle>
+            <AlertDialogDescription>
+              Mark this batch as processed? This will delete the images from storage since they've been handled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleMarkProcessedConfirm} className="bg-emerald-600 hover:bg-emerald-700">
+              Mark Processed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

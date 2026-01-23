@@ -174,6 +174,25 @@ export function UploadDetailsContent() {
         // Process files progressively - one at a time
         for (let i = 0; i < initialFiles.length; i++) {
           const file = initialFiles[i];
+          
+          // Skip AI categorization for image files - they go to admin review
+          const isImage = file.fileType.startsWith("image/");
+          if (isImage) {
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === file.id
+                  ? {
+                      ...f,
+                      documentName: file.fileName.replace(/\.[^/.]+$/, ""),
+                      isProcessing: false,
+                      aiCategorized: false,
+                    }
+                  : f,
+              ),
+            );
+            continue; // Skip to next file
+          }
+          
           try {
             // For large files, we'll let the server handle sampling
             // But limit what we send to avoid body size issues

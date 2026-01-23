@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
     .from("comments")
     .insert({
       document_id: documentId,
-      sender_id: user.id,
-      happiness_level: happinessLevel,
-      message,
+      user_id: user.id,
+      happiness: happinessLevel,
+      content: message,
       is_admin_complement: false,
     })
     .select()
@@ -75,13 +75,6 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-
-  // Mark download as commented
-  await supabase
-    .from("user_downloads")
-    .update({ has_commented: true })
-    .eq("user_id", user.id)
-    .eq("document_id", documentId);
 
   // Notify uploader (if not self and within limit)
   if (document.uploader_id && document.uploader_id !== user.id) {
@@ -108,7 +101,7 @@ export async function POST(request: NextRequest) {
         message: message
           ? `"${message.substring(0, 100)}${message.length > 100 ? "..." : ""}" on your "${document.title}"`
           : `Someone found your "${document.title}" ${happinessLevel.replace("_", " ")}!`,
-        link: `/doc/${document.id}`,
+        action_url: `/doc/${document.id}`,
       });
     }
   }

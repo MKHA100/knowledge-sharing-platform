@@ -63,9 +63,6 @@ export function DocumentsSection({
   const [statusFilter, setStatusFilter] = useState("all");
   const [subjectComboOpen, setSubjectComboOpen] = useState(false);
 
-  console.log("DocumentsSection received documents:", documents);
-  console.log("Documents count:", documents?.length);
-
   // Filter and sort documents
   const filteredDocuments = documents
     .filter((doc) => {
