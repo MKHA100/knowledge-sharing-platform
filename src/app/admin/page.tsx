@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { api } from "@/lib/api/client";
@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
   { id: "settings", label: "Settings", icon: "Settings" },
 ];
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get("section") || "overview";
@@ -499,5 +499,18 @@ export default function AdminDashboard() {
         </main>
       </div>
     </>
+  );
+}
+
+// Wrap the component with Suspense boundary
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+      </div>
+    }>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
