@@ -111,6 +111,24 @@ export const api = {
       const response = await fetch(`${API_BASE}/users/downloads`);
       return response.json();
     },
+    saved: async () => {
+      const response = await fetch(`${API_BASE}/users/saved`);
+      return response.json();
+    },
+    liked: async () => {
+      const response = await fetch(`${API_BASE}/users/liked`);
+      return response.json();
+    },
+  },
+
+  // Documents - save/unsave
+  saved: {
+    toggle: async (documentId: string) => {
+      const response = await fetch(`${API_BASE}/documents/${documentId}/save`, {
+        method: "POST",
+      });
+      return response.json();
+    },
   },
 
   // Failed searches

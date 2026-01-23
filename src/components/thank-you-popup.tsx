@@ -18,6 +18,12 @@ const feedbackOptions = [
   { emoji: "lifesaver", label: "Life Saver!", icon: "❤️" },
 ];
 
+const quickSuggestions = [
+  "Thank you so much for sharing this!",
+  "This helped me a lot with my studies!",
+  "Really appreciate you uploading this!",
+];
+
 export function ThankYouPopup() {
   const {
     showThankYouPopup,
@@ -49,21 +55,26 @@ export function ThankYouPopup() {
   }, [showThankYouPopup]);
 
   const handleSendFeedback = async () => {
-    if (selectedDocument && selectedFeedback) {
+    if (selectedDocument && selectedFeedback && message.trim()) {
       try {
-        const happinessMap: Record<string, string> = {
-          helpful: "helpful",
-          veryhelpful: "very_helpful",
-          lifesaver: "life_saver",
-        };
-        await api.comments.create({
-          document_id: selectedDocument,
-          happiness: happinessMap[selectedFeedback] || "helpful",
-          content: message || null,
+        // Call the new thank-you message API with AI moderation
+        const response = await fetch("/api/thank-you", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: selectedDocument,
+            message: message.trim(),
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error("Failed to send message");
+        }
+
         setSent(true);
         toast.success("Message sent! You made someone's day! 🎉");
-      } catch {
+      } catch (error) {
+        console.error("Failed to send thank you message:", error);
         toast.error("Failed to send feedback");
       }
     }
@@ -204,8 +215,23 @@ export function ThankYouPopup() {
             <div className="mb-5">
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Write a message{" "}
-                <span className="font-normal text-slate-400">(optional)</span>
+                <span className="font-normal text-slate-400">(required)</span>
               </label>
+              
+              {/* Quick Suggestions */}
+              <div className="mb-2 flex flex-wrap gap-2">
+                {quickSuggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setMessage(suggestion)}
+                    className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-600 transition-colors hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+
               <Textarea
                 placeholder="Thanks for sharing this! It really helped me prepare for my exams..."
                 value={message}
@@ -217,10 +243,10 @@ export function ThankYouPopup() {
             {/* Send Button */}
             <Button
               onClick={handleSendFeedback}
-              disabled={!selectedFeedback}
+              disabled={!selectedFeedback || !message.trim()}
               className={cn(
                 "h-11 w-full rounded-lg font-semibold transition-all",
-                selectedFeedback
+                selectedFeedback && message.trim()
                   ? "bg-teal-500 text-white shadow-lg shadow-teal-500/25 hover:bg-teal-600"
                   : "bg-slate-100 text-slate-400 cursor-not-allowed",
               )}

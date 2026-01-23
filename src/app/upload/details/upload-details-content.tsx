@@ -45,14 +45,18 @@ interface FileData {
   documentName: string;
   medium: string;
   subject: string;
-  subType?: string;
+  documentType: string;
   aiCategorized?: boolean;
   aiConfidence?: number;
   isProcessing: boolean;
 }
 
 const MEDIUMS = ["Sinhala", "English", "Tamil"];
-const SUB_TYPES = ["Book", "Short Note", "Past Paper"];
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: "book", label: "Book" },
+  { value: "notes", label: "Short Note" },
+  { value: "paper", label: "Past Paper" },
+];
 
 const DOCUMENT_TYPES: Record<string, string> = {
   book: "Book",
@@ -67,6 +71,16 @@ function mapLanguageToMedium(language: string): string {
   if (lang.includes("sinhala")) return "Sinhala";
   if (lang.includes("tamil")) return "Tamil";
   if (lang.includes("english")) return "English";
+  return "";
+}
+
+// Helper to map AI document type response to our document type values
+function mapAIDocumentType(aiDocType: string): string {
+  if (!aiDocType) return "";
+  const normalized = aiDocType.toLowerCase().trim();
+  if (normalized.includes("book")) return "book";
+  if (normalized.includes("note") || normalized.includes("short")) return "notes";
+  if (normalized.includes("paper") || normalized.includes("past") || normalized.includes("exam")) return "paper";
   return "";
 }
 
@@ -149,7 +163,7 @@ export function UploadDetailsContent() {
           documentName: "",
           medium: "",
           subject: "",
-          subType: "",
+          documentType: uploadType === "jumbled" ? "" : uploadType,
           aiCategorized: false,
           isProcessing: true,
         }));
@@ -193,6 +207,9 @@ export function UploadDetailsContent() {
                 // Map the AI response to our dropdown values
                 const mappedMedium = mapLanguageToMedium(result.data.language);
                 const mappedSubject = mapAISubjectToId(result.data.subject);
+                const mappedDocType = uploadType === "jumbled" 
+                  ? mapAIDocumentType(result.data.documentType)
+                  : uploadType;
 
                 setFiles((prev) =>
                   prev.map((f) =>
@@ -204,6 +221,7 @@ export function UploadDetailsContent() {
                             file.fileName.replace(/\.[^/.]+$/, ""),
                           medium: mappedMedium,
                           subject: mappedSubject,
+                          documentType: mappedDocType || uploadType,
                           aiCategorized: !!(mappedMedium && mappedSubject),
                           aiConfidence: result.data.subjectConfidence || 0.5,
                           isProcessing: false,
@@ -275,7 +293,7 @@ export function UploadDetailsContent() {
       file.documentName &&
       file.medium &&
       file.subject &&
-      (uploadType !== "jumbled" || file.subType),
+      file.documentType,
   );
 
   const handleUpload = async () => {
@@ -307,11 +325,7 @@ export function UploadDetailsContent() {
         formData.append("title", file.documentName);
         formData.append(
           "documentType",
-          uploadType === "jumbled"
-            ? file.subType?.toLowerCase().replace(" ", "_") || "short_note"
-            : uploadType === "notes"
-              ? "short_note"
-              : uploadType,
+          file.documentType === "notes" ? "short_note" : file.documentType,
         );
         formData.append("subject", file.subject);
         formData.append("medium", file.medium.toLowerCase());
@@ -535,11 +549,29 @@ export function UploadDetailsContent() {
                         </div>
                         <div>
                           <Label className="mb-2 block text-sm font-medium text-slate-700">
-                            Document Type
+                            Document Type *
                           </Label>
-                          <div className="flex h-11 items-center rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-medium text-slate-700">
-                            {DOCUMENT_TYPES[uploadType] || uploadType}
-                          </div>
+                          <Select
+                            value={file.documentType}
+                            onValueChange={(value) =>
+                              updateFile(file.id, "documentType", value)
+                            }
+                          >
+                            <SelectTrigger className="h-11 rounded-lg border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-500 focus:ring-blue-500 [&>span]:text-slate-900">
+                              <SelectValue placeholder="Select document type" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl bg-white border-slate-200 shadow-lg">
+                              {DOCUMENT_TYPE_OPTIONS.map((type) => (
+                                <SelectItem
+                                  key={type.value}
+                                  value={type.value}
+                                  className="text-slate-900 font-medium cursor-pointer hover:bg-blue-50 focus:bg-blue-50"
+                                >
+                                  {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
 
@@ -587,7 +619,7 @@ export function UploadDetailsContent() {
                             <SelectContent className="rounded-xl bg-white border-slate-200 shadow-lg">
                               <div className="sticky top-0 border-b border-slate-200 bg-white p-2 z-10">
                                 <div className="relative">
-                                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                                   <Input
                                     placeholder="Search subjects..."
                                     value={subjectSearch[file.id] || ""}
@@ -597,8 +629,11 @@ export function UploadDetailsContent() {
                                         [file.id]: e.target.value,
                                       }))
                                     }
-                                    className="h-9 rounded-lg pl-9 text-sm"
+                                    className="h-9 rounded-lg pl-9 text-sm text-slate-900 font-medium placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.target.select()}
+                                    autoComplete="off"
                                   />
                                 </div>
                               </div>
@@ -609,7 +644,7 @@ export function UploadDetailsContent() {
                                   <SelectItem
                                     key={subject.id}
                                     value={subject.id}
-                                    className="text-slate-900 font-medium cursor-pointer hover:bg-blue-50 focus:bg-blue-50"
+                                    className="text-slate-900 font-semibold cursor-pointer hover:bg-blue-100 hover:text-slate-900 focus:bg-blue-100 focus:text-slate-900"
                                   >
                                     {subject.displayName}
                                   </SelectItem>
@@ -619,36 +654,6 @@ export function UploadDetailsContent() {
                           </Select>
                         </div>
                       </div>
-
-                      {/* Row 3: Sub Type for Jumbled Documents */}
-                      {uploadType === "jumbled" && (
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-slate-700">
-                            Document Sub-Type *
-                          </Label>
-                          <Select
-                            value={file.subType || ""}
-                            onValueChange={(value) =>
-                              updateFile(file.id, "subType", value)
-                            }
-                          >
-                            <SelectTrigger className="h-11 rounded-lg border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-500 focus:ring-blue-500 [&>span]:text-slate-900">
-                              <SelectValue placeholder="Select sub-type" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl bg-white border-slate-200 shadow-lg">
-                              {SUB_TYPES.map((type) => (
-                                <SelectItem
-                                  key={type}
-                                  value={type}
-                                  className="text-slate-900 font-medium cursor-pointer hover:bg-blue-50 focus:bg-blue-50"
-                                >
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

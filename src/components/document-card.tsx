@@ -2,9 +2,8 @@
 
 import React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Bookmark,
   Heart,
   Download,
   FileText,
@@ -21,24 +20,34 @@ import type { DocumentWithUploader } from "@/types";
 
 interface DocumentCardProps {
   document: DocumentWithUploader;
+  onDocumentClick?: (id: string) => void;
 }
 
-export function DocumentCard({ document }: DocumentCardProps) {
+export function DocumentCard({ document, onDocumentClick }: DocumentCardProps) {
   const { setSelectedDocument, isLoggedIn, setShowLoginModal } = useApp();
   const [isHovered, setIsHovered] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const [upvoteCount, setUpvoteCount] = useState(document.upvotes);
   const [hasUpvoted, setHasUpvoted] = useState(false);
 
-  const handleSave = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isLoggedIn) {
-      setShowLoginModal(true);
-      return;
-    }
-    setIsSaved(!isSaved);
-    toast.success(isSaved ? "Removed from saved" : "Saved to your collection");
-  };
+  // Fetch liked status when component mounts
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    
+    const fetchUserStatus = async () => {
+      try {
+        // Fetch liked status
+        const likedResponse = await fetch(`/api/documents/${document.id}/upvote`);
+        const likedData = await likedResponse.json();
+        if (likedData.success) {
+          setHasUpvoted(likedData.data.user_vote === "upvote");
+        }
+      } catch (e) {
+        console.error("Error fetching user status:", e);
+      }
+    };
+    
+    fetchUserStatus();
+  }, [document.id, isLoggedIn]);
 
   const handleUpvote = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -65,7 +74,12 @@ export function DocumentCard({ document }: DocumentCardProps) {
       setShowLoginModal(true);
       return;
     }
-    setSelectedDocument(document.id);
+    // Use onDocumentClick callback if provided (for URL sync), otherwise use setSelectedDocument
+    if (onDocumentClick) {
+      onDocumentClick(document.id);
+    } else {
+      setSelectedDocument(document.id);
+    }
   };
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -86,12 +100,26 @@ export function DocumentCard({ document }: DocumentCardProps) {
     >
       {/* Document Preview Area */}
       <div className="relative aspect-[4/3] overflow-hidden">
-        {/* Background with gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200">
-          <div className="flex h-full w-full items-center justify-center">
-            <FileText className="h-20 w-20 text-slate-300" />
+        {/* Background with PDF preview or fallback gradient */}
+        {document.file_path ? (
+          <div className="absolute inset-0 bg-slate-100">
+            {/* PDF First Page Preview using embed */}
+            <iframe
+              src={`${document.file_path}#page=1&view=FitH&toolbar=0&navpanes=0`}
+              className="h-full w-full pointer-events-none"
+              title={document.title}
+              loading="lazy"
+            />
+            {/* Overlay to make it look like an image */}
+            <div className="absolute inset-0 bg-transparent" />
           </div>
-        </div>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200">
+            <div className="flex h-full w-full items-center justify-center">
+              <FileText className="h-20 w-20 text-slate-300" />
+            </div>
+          </div>
+        )}
 
         {/* Hover Overlay */}
         <div
@@ -101,25 +129,13 @@ export function DocumentCard({ document }: DocumentCardProps) {
           )}
         />
 
-        {/* Top Right - Save & Like buttons (slide in from right) */}
+        {/* Top Right - Like button (slide in from right) */}
         <div
           className={cn(
             "absolute right-3 top-3 flex items-center gap-2 transition-all duration-300",
             isHovered ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0",
           )}
         >
-          <button
-            type="button"
-            onClick={handleSave}
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-lg backdrop-blur-md transition-all",
-              isSaved
-                ? "bg-white text-blue-600"
-                : "bg-black/40 text-white hover:bg-black/60",
-            )}
-          >
-            <Bookmark className={cn("h-5 w-5", isSaved && "fill-current")} />
-          </button>
           <button
             type="button"
             onClick={handleUpvote}
@@ -130,7 +146,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
                 : "bg-black/40 text-white hover:bg-black/60",
             )}
           >
-            <ThumbsUp className={cn("h-5 w-5", hasUpvoted && "fill-current")} />
+            <Heart className={cn("h-5 w-5", hasUpvoted && "fill-current")} />
           </button>
         </div>
 
@@ -189,7 +205,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
             {document.downloads.toLocaleString()}
           </span>
           <span className="flex items-center gap-1">
-            <ThumbsUp className="h-3 w-3" />
+            <Heart className="h-3 w-3" />
             {upvoteCount}
           </span>
           <span className="flex items-center gap-1">

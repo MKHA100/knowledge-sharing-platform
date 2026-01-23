@@ -130,22 +130,22 @@ export const SUBJECTS: Subject[] = [
   {
     id: "english_literary_texts",
     displayName: "Appreciation of English Literary Texts",
-    searchTerms: ["english literature", "english literary texts"],
+    searchTerms: ["english literature", "english literary texts", "literature", "lit"],
   },
   {
     id: "sinhala_literary_texts",
     displayName: "Appreciation of Sinhala Literary Texts",
-    searchTerms: ["sinhala literature", "sinhala literary texts"],
+    searchTerms: ["sinhala literature", "sinhala literary texts", "literature", "lit"],
   },
   {
     id: "tamil_literary_texts",
     displayName: "Appreciation of Tamil Literary Texts",
-    searchTerms: ["tamil literature", "tamil literary texts"],
+    searchTerms: ["tamil literature", "tamil literary texts", "literature", "lit"],
   },
   {
     id: "arabic_literary_texts",
     displayName: "Appreciation of Arabic Literary Texts",
-    searchTerms: ["arabic literature", "arabic literary texts"],
+    searchTerms: ["arabic literature", "arabic literary texts", "literature", "lit"],
   },
   {
     id: "drama_theatre",
@@ -251,4 +251,36 @@ export const SUBJECT_IDS = SUBJECTS.map((s) => s.id);
 // Subject validation
 export function isValidSubject(id: string): id is SubjectId {
   return SUBJECTS.some((subject) => subject.id === id);
+}
+
+// Find subject ID from search query - used by search & documents API
+export function findSubjectIdFromQuery(query: string): string | null {
+  const normalizedQuery = query.toLowerCase().trim();
+
+  const matchedSubject = SUBJECTS.find(
+    (s) =>
+      s.displayName.toLowerCase() === normalizedQuery ||
+      s.id === normalizedQuery ||
+      s.searchTerms.some((term) => term.toLowerCase() === normalizedQuery),
+  );
+
+  return matchedSubject?.id || null;
+}
+
+// Find all literature subject IDs - used for "literature" search
+export function findLiteratureSubjectIds(): string[] {
+  return SUBJECTS.filter(
+    (s) => 
+      s.id.includes("literary_texts") ||
+      s.displayName.toLowerCase().includes("literary")
+  ).map((s) => s.id);
+}
+
+// Check if query is a literature search
+export function isLiteratureQuery(query: string): boolean {
+  const normalized = query.toLowerCase().trim();
+  return normalized === "literature" || 
+         normalized === "literary" ||
+         normalized === "literature texts" ||
+         normalized === "literary texts";
 }

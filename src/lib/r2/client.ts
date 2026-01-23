@@ -59,10 +59,14 @@ export async function deleteFromR2(key: string): Promise<void> {
 export async function getPresignedDownloadUrl(
   key: string,
   expiresIn = 3600,
+  filename?: string,
 ): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME!,
     Key: key,
+    ResponseContentDisposition: filename 
+      ? `attachment; filename="${filename}"`
+      : 'attachment',
   });
 
   return getSignedUrl(R2, command, { expiresIn });

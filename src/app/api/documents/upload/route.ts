@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadToR2 } from "@/lib/r2/client";
 import { uploadDocumentSchema } from "@/lib/validations/schemas";
-import { isValidFileType, getMimeType } from "@/lib/utils/helpers";
+import { isValidFileType, getMimeType } from "@/lib/utils";
 import { convertToPdf, isImageFile } from "@/lib/utils/pdf-converter";
 import type { ApiResponse, Document } from "@/types";
 

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   BookOpen,
@@ -15,9 +15,21 @@ import {
   Loader2,
   Image as ImageIcon,
   AlertCircle,
+  ExternalLink,
+  PauseCircle,
 } from "lucide-react";
 import { SharedNavbar } from "@/components/shared-navbar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AppProvider } from "@/lib/app-context";
 import { ToastProvider } from "@/components/toast-provider";
 import { LoginModal } from "@/components/login-modal";
@@ -58,28 +70,72 @@ const documentTypes = [
 
 function UploadContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const prefilledCategory = searchParams.get("category");
 
   const [selectedType, setSelectedType] = React.useState<string | null>(null);
   const [files, setFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [uploadState, setUploadState] = React.useState<
-    "idle" | "uploading" | "success" | "images-submitted"
+    "idle" | "uploading" | "success" | "images-submitted" | "paused"
   >("idle");
+  
+  // Upload status check
+  const [uploadsEnabled, setUploadsEnabled] = React.useState<boolean | null>(null);
+  const [uploadPauseReason, setUploadPauseReason] = React.useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = React.useState(true);
+
+  // Check if uploads are enabled on mount
+  React.useEffect(() => {
+    const checkUploadStatus = async () => {
+      try {
+        const response = await fetch("/api/admin/settings/upload-status");
+        const result = await response.json();
+        
+        if (result.success) {
+          setUploadsEnabled(result.data.enabled);
+          setUploadPauseReason(result.data.reason);
+          if (!result.data.enabled) {
+            setUploadState("paused");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check upload status:", error);
+        // Default to enabled if check fails
+        setUploadsEnabled(true);
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkUploadStatus();
+  }, []);
   const [submittedImageCount, setSubmittedImageCount] = React.useState(0);
+  const [showImageConfirmDialog, setShowImageConfirmDialog] = React.useState(false);
 
   // Helper to check if a file is an image
   const isImageFile = (file: File) => file.type.startsWith("image/");
+
+  // Helper to check if file is Word document
+  const isWordFile = (file: File) => 
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.type === "application/msword";
+
+  // Helper to check if file is PDF
+  const isPdfFile = (file: File) => file.type === "application/pdf";
 
   // Check if all selected files are images
   const allFilesAreImages =
     files.length > 0 && files.every((file) => isImageFile(file));
 
-  // Check if there's a mix of images and documents
-  const hasMixedFiles =
-    files.length > 0 &&
-    files.some((file) => isImageFile(file)) &&
-    files.some((file) => !isImageFile(file));
+  // Check files composition
+  const imageFiles = files.filter(isImageFile);
+  const wordFiles = files.filter(isWordFile);
+  const pdfFiles = files.filter(isPdfFile);
+  const otherFiles = files.filter(f => !isImageFile(f) && !isWordFile(f) && !isPdfFile(f));
+
+  // New validation: allow images + Word/PDF, but not other combinations
+  const hasInvalidMix = otherFiles.length > 0;
 
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -109,59 +165,53 @@ function UploadContent() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleContinue = async () => {
-    if (files.length === 0) {
-      toast.error("Please select at least one file to upload");
-      return;
-    }
+  const handleOpenConverter = () => {
+    window.open("https://www.ilovepdf.com/jpg_to_pdf", "_blank");
+  };
 
-    // If there's a mix of images and documents, show warning
-    if (hasMixedFiles) {
-      toast.error(
-        "Please upload only images OR only documents, not both together",
-      );
-      return;
-    }
-
-    // If all files are images, send directly to admin for approval
-    if (allFilesAreImages) {
-      setUploadState("uploading");
-
-      try {
-        const formData = new FormData();
-        files.forEach((file) => formData.append("files", file));
-
-        const response = await fetch("/api/documents/submit-images", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          setSubmittedImageCount(files.length);
-          setUploadState("images-submitted");
-          toast.success(`${files.length} image(s) sent for admin review!`, {
-            description:
-              "Our team will compile and publish them shortly. Thank you!",
-          });
-        } else {
-          throw new Error(result.error || "Failed to submit images");
-        }
-      } catch (error) {
-        console.error("Image submission error:", error);
-        toast.error("Failed to submit images. Please try again.");
-        setUploadState("idle");
-      }
-      return;
-    }
-
-    // For documents (PDF, Word), store files in IndexedDB and continue to details
+  const processDocumentUpload = async () => {
     try {
       setUploadState("uploading");
 
-      // Convert files to base64 for IndexedDB storage
-      const fileDataPromises = files.map(async (file) => {
+      let documentFiles = [...pdfFiles];
+      
+      // Convert Word files to PDF
+      if (wordFiles.length > 0) {
+        toast.info(`Converting ${wordFiles.length} Word document(s) to PDF...`);
+        
+        for (const wordFile of wordFiles) {
+          try {
+            const formData = new FormData();
+            formData.append("file", wordFile);
+
+            const convertResponse = await fetch("/api/documents/convert-word", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (convertResponse.ok) {
+              const blob = await convertResponse.blob();
+              const pdfName = wordFile.name.replace(/\.(docx?|DOCX?)$/, ".pdf");
+              const pdfFile = new (File as any)([blob], pdfName, { type: "application/pdf" });
+              documentFiles.push(pdfFile);
+            } else {
+              toast.error(`Failed to convert ${wordFile.name}`);
+            }
+          } catch (error) {
+            console.error(`Error converting ${wordFile.name}:`, error);
+            toast.error(`Failed to convert ${wordFile.name}`);
+          }
+        }
+      }
+
+      if (documentFiles.length === 0) {
+        toast.error("No documents to upload after processing");
+        setUploadState("idle");
+        return;
+      }
+
+      // Convert to base64 for storage
+      const fileDataPromises = documentFiles.map(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
         const base64 = btoa(
           new Uint8Array(arrayBuffer).reduce(
@@ -169,26 +219,91 @@ function UploadContent() {
             "",
           ),
         );
-        return {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          base64,
-        };
+        return { name: file.name, type: file.type, size: file.size, base64 };
       });
 
       const fileData = await Promise.all(fileDataPromises);
-
-      // Store in IndexedDB (supports much larger files than sessionStorage)
       await storeFilesForUpload(fileData);
-
-      // Navigate to details page
-      window.location.href = `/upload/details?type=${selectedType}&files=${files.length}`;
+      window.location.href = `/upload/details?type=${selectedType}&files=${documentFiles.length}`;
     } catch (error) {
       console.error("Error preparing files:", error);
       toast.error("Failed to prepare files. Please try again.");
       setUploadState("idle");
     }
+  };
+
+  const handleConfirmImageUpload = async () => {
+    setShowImageConfirmDialog(false);
+    setUploadState("uploading");
+
+    try {
+      // Submit images to admin
+      const formData = new FormData();
+      imageFiles.forEach((file) => formData.append("files", file));
+
+      const imageResponse = await fetch("/api/documents/submit-images", {
+        method: "POST",
+        body: formData,
+      });
+
+      const imageResult = await imageResponse.json();
+
+      if (!imageResult.success) {
+        const errorMessage = imageResult.error || "Failed to submit images";
+        console.error("API Error:", errorMessage);
+        toast.error(errorMessage, {
+          description: "Please check the database setup or contact support.",
+          duration: 8000,
+        });
+        setUploadState("idle");
+        return;
+      }
+
+      toast.success(`${imageFiles.length} image(s) sent for admin review!`);
+
+      // Check if there are other documents to process
+      const hasOtherDocs = pdfFiles.length > 0 || wordFiles.length > 0;
+
+      if (hasOtherDocs) {
+        // Continue with document upload
+        await processDocumentUpload();
+      } else {
+        // Images only - redirect to confirmation page
+        router.push("/upload/images-submitted?count=" + imageFiles.length);
+      }
+    } catch (error) {
+      console.error("Image submission error:", error);
+      const message = error instanceof Error ? error.message : "Failed to submit images. Please try again.";
+      toast.error(message, {
+        description: "Check console for details or contact support.",
+        duration: 8000,
+      });
+      setUploadState("idle");
+    }
+  };
+
+  const handleContinue = async () => {
+    if (files.length === 0) {
+      toast.error("Please select at least one file to upload");
+      return;
+    }
+
+    // Check for invalid file types
+    if (hasInvalidMix) {
+      toast.error(
+        "Please upload only PDFs, Word documents, and/or images. Other file types are not supported.",
+      );
+      return;
+    }
+
+    // If there are ANY images, show confirmation dialog first
+    if (imageFiles.length > 0) {
+      setShowImageConfirmDialog(true);
+      return;
+    }
+
+    // No images - proceed with normal upload flow
+    await processDocumentUpload();
   };
 
   const resetUpload = () => {
@@ -224,7 +339,54 @@ function UploadContent() {
           Share your notes with thousands of O-Level students across Sri Lanka
         </p>
 
-        {uploadState === "images-submitted" ? (
+        {checkingStatus ? (
+          /* Loading State - Checking upload status */
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center">
+            <Loader2 className="mb-4 h-12 w-12 animate-spin text-blue-500" />
+            <h2 className="mb-2 text-lg font-semibold text-slate-900">
+              Loading...
+            </h2>
+            <p className="text-slate-500">
+              Checking upload availability
+            </p>
+          </div>
+        ) : uploadState === "paused" || !uploadsEnabled ? (
+          /* Uploads Paused State */
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-12 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25">
+              <PauseCircle className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="mb-3 text-xl font-bold text-slate-900">
+              Uploads Temporarily Paused
+            </h2>
+            <p className="mb-4 max-w-md text-slate-600">
+              Hey, we are really grateful for your support to help your fellow friends! 
+              But please give us a brief moment while we quickly make some changes to our system 
+              because we have experienced an overwhelming demand of uploads over the last few hours.
+            </p>
+            {uploadPauseReason && (
+              <p className="mb-4 text-sm text-amber-700 bg-amber-100 px-4 py-2 rounded-lg">
+                {uploadPauseReason}
+              </p>
+            )}
+            <p className="mb-6 text-sm text-slate-500">
+              Please check back in a little while. We appreciate your patience! 🙏
+            </p>
+            <div className="flex gap-3">
+              <Link href="/browse">
+                <Button variant="outline" className="rounded-xl bg-white">
+                  Browse Documents
+                </Button>
+              </Link>
+              <Button
+                onClick={() => window.location.reload()}
+                className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white"
+              >
+                Check Again
+              </Button>
+            </div>
+          </div>
+        ) : uploadState === "images-submitted" ? (
           /* Images Submitted to Admin State */
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-12 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25">
@@ -392,33 +554,31 @@ function UploadContent() {
                 </h3>
 
                 {/* Image upload notice */}
-                {allFilesAreImages && (
+                {imageFiles.length > 0 && (
                   <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                     <div className="text-sm">
                       <p className="font-medium text-amber-800">
-                        Images will be sent to admin for review
+                        Images Detected ({imageFiles.length})
                       </p>
                       <p className="mt-1 text-amber-700">
-                        Our team will compile these images into a PDF document
-                        and publish them. This ensures quality and proper
-                        formatting.
+                        You can either convert your images to PDF yourself using the button below, 
+                        or send them to our admin team for review and compilation.
                       </p>
                     </div>
                   </div>
                 )}
 
                 {/* Mixed files warning */}
-                {hasMixedFiles && (
+                {hasInvalidMix && (
                   <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
                     <div className="text-sm">
                       <p className="font-medium text-red-800">
-                        Mixed file types detected
+                        Invalid file types detected
                       </p>
                       <p className="mt-1 text-red-700">
-                        Please upload only images OR only documents (PDF, Word),
-                        not both together.
+                        Please upload only PDFs, Word documents, and/or images. Other file types are not supported.
                       </p>
                     </div>
                   </div>
@@ -457,24 +617,74 @@ function UploadContent() {
               </div>
             )}
 
-            {/* Continue Button */}
-            <Button
-              onClick={handleContinue}
-              disabled={files.length === 0 || hasMixedFiles}
-              className={cn(
-                "h-12 w-full rounded-xl text-base font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50",
-                allFilesAreImages
-                  ? "bg-gradient-to-r from-amber-500 to-orange-600 shadow-amber-500/25"
-                  : "bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/25",
-              )}
-            >
-              {allFilesAreImages
-                ? `Submit ${files.length} Image(s) for Admin Review`
-                : "Continue to Details"}
-            </Button>
+            {/* Action Buttons */}
+            {imageFiles.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {/* Convert Yourself Button */}
+                <Button
+                  onClick={handleOpenConverter}
+                  className="h-12 rounded-xl text-base font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl transition-all"
+                  disabled={(uploadState as string) === "uploading"}
+                >
+                  <ExternalLink className="mr-2 h-5 w-5" />
+                  Convert Yourself
+                </Button>
+                
+                {/* Send to Admin Button */}
+                <Button
+                  onClick={handleContinue}
+                  disabled={files.length === 0 || hasInvalidMix}
+                  className="h-12 rounded-xl text-base font-semibold bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  Send to Admin
+                </Button>
+              </div>
+            ) : (
+              /* Continue Button for documents only */
+              <Button
+                onClick={handleContinue}
+                disabled={files.length === 0 || hasInvalidMix}
+                className="h-12 w-full rounded-xl text-base font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50 bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/25"
+              >
+                Continue to Details
+              </Button>
+            )}
           </div>
         )}
       </main>
+
+      {/* Image Confirmation Dialog */}
+      <AlertDialog open={showImageConfirmDialog} onOpenChange={setShowImageConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Image Upload Confirmation</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You have selected <strong>{imageFiles.length} image file(s)</strong>
+                {pdfFiles.length + wordFiles.length > 0 && (
+                  <> and <strong>{pdfFiles.length + wordFiles.length} document file(s)</strong></>
+                )}.
+              </p>
+              <p>
+                Images will be sent to our admin team for review and compilation into a 
+                professional document. This process typically takes 24-48 hours.
+              </p>
+              <p className="text-sm font-medium">
+                Would you like to proceed with sending these images to the admin team?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmImageUpload}
+              className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+            >
+              Yes, Send for Admin Review
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <LoginModal />
     </div>

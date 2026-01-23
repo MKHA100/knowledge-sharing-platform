@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(20);
 
+  console.log("Fetched notifications for user:", user.id, "Count:", notifications?.length);
+  console.log("Notifications data:", notifications);
+
   if (error) {
+    console.error("Error fetching notifications:", error);
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: error.message },
       { status: 500 },

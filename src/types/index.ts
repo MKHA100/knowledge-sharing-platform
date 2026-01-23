@@ -65,7 +65,8 @@ export type NotificationType =
   | "upload_processed"
   | "document_rejected"
   | "system_message"
-  | "complement";
+  | "complement"
+  | "thank_you";
 export type UserRole = "user" | "admin";
 
 // Database models (match schema.sql exactly)

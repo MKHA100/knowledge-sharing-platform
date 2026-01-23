@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logFailedSearchSchema } from "@/lib/validations/schemas";
-import { normalizeSearchQuery } from "@/lib/utils/helpers";
+import { normalizeSearchQuery } from "@/lib/utils";
 import type { ApiResponse } from "@/types";
 
 export async function POST(request: NextRequest) {

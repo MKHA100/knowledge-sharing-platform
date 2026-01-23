@@ -1,8 +1,9 @@
-import React from "react";
+import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { PHProvider, PostHogPageview } from "@/lib/posthog/provider";
 import "./globals.css";
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -40,13 +41,18 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body
-          className={`font-sans antialiased`}
-          suppressHydrationWarning={true}
-        >
-          {children}
-          <Analytics />
-        </body>
+        <PHProvider>
+          <body
+            className={`font-sans antialiased`}
+            suppressHydrationWarning={true}
+          >
+            <Suspense fallback={null}>
+              <PostHogPageview />
+            </Suspense>
+            {children}
+            <Analytics />
+          </body>
+        </PHProvider>
       </html>
     </ClerkProvider>
   );

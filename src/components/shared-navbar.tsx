@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import {
   BookOpen,
   User,
@@ -11,6 +12,7 @@ import {
   ArrowLeft,
   Search,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +40,7 @@ export function SharedNavbar({
   onSearchChange,
 }: SharedNavbarProps) {
   const { isLoggedIn, setShowLoginModal } = useApp();
+  const { user } = useUser();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -129,19 +132,29 @@ export function SharedNavbar({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100/70 text-blue-700 transition-all hover:bg-blue-200/70 hover:scale-105"
+                    className="flex h-10 w-10 items-center justify-center rounded-full transition-all hover:ring-2 hover:ring-blue-400 hover:ring-offset-2 focus:outline-none"
                   >
-                    <User className="h-4 w-4" />
+                    <Avatar className="h-10 w-10 border-2 border-white shadow-md">
+                      <AvatarImage 
+                        src={user?.imageUrl || undefined} 
+                        alt={user?.fullName || user?.username || 'User'} 
+                      />
+                      <AvatarFallback className="bg-blue-500 text-white text-sm font-semibold">
+                        {user?.firstName?.charAt(0)?.toUpperCase() || 
+                         user?.emailAddresses?.[0]?.emailAddress?.charAt(0)?.toUpperCase() || 
+                         'U'}
+                      </AvatarFallback>
+                    </Avatar>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="rounded-xl bg-white/95 backdrop-blur-sm border-blue-200/30 shadow-xl"
+                  className="w-56 rounded-xl bg-white border-slate-200 shadow-lg p-2"
                 >
                   <DropdownMenuItem asChild>
                     <Link
                       href="/dashboard"
-                      className="text-slate-700 hover:text-blue-600 hover:bg-blue-50/50 transition-all font-medium px-3 py-2 rounded-md"
+                      className="cursor-pointer text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium px-3 py-2.5 rounded-lg"
                     >
                       My Dashboard
                     </Link>
@@ -149,7 +162,7 @@ export function SharedNavbar({
                   <DropdownMenuItem asChild>
                     <Link
                       href="/dashboard?tab=account"
-                      className="text-slate-700 hover:text-blue-600 hover:bg-blue-50/50 transition-all font-medium px-3 py-2 rounded-md"
+                      className="cursor-pointer text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium px-3 py-2.5 rounded-lg"
                     >
                       Settings
                     </Link>

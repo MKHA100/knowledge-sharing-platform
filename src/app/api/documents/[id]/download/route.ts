@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getPresignedDownloadUrl } from "@/lib/r2/client";
 import type { ApiResponse, Document, FailedSearch } from "@/types";
 
 export async function POST(
@@ -72,11 +73,14 @@ export async function POST(
   const document = rpcResult || docData;
 
   // Get a suggested query to show the downloader
-  const { data: suggestion } = await supabase
+  const { data: suggestion, error: suggestionError } = await supabase
     .rpc("get_suggested_query", {
       exclude_subject: document?.subject || null,
-    })
-    .catch(() => ({ data: null }));
+    });
+  
+  if (suggestionError) {
+    console.log("[Download API] Suggestion RPC error:", suggestionError);
+  }
 
   // Check if uploader should get notification (milestone: 10, 50, 100, etc.)
   const milestones = [10, 25, 50, 100, 250, 500, 1000];
@@ -105,6 +109,41 @@ export async function POST(
     }
   }
 
+  // Get download URL - try presigned URL first, fall back to public URL
+  let downloadUrl = docData.file_path;
+  
+  // Check if we should generate a presigned URL
+  // If R2_PUBLIC_URL is set and file_path uses it, files are already public
+  const isPublicBucket = process.env.R2_PUBLIC_URL && 
+                         docData.file_path.includes(process.env.R2_PUBLIC_URL);
+  
+  if (!isPublicBucket) {
+    // Extract the key from the file_path for presigned URL generation
+    let key = docData.file_path;
+    
+    if (docData.file_path.includes('r2.dev/')) {
+      key = docData.file_path.split('r2.dev/')[1];
+    } else if (docData.file_path.startsWith('http')) {
+      try {
+        const url = new URL(docData.file_path);
+        key = url.pathname.substring(1);
+      } catch (e) {
+        console.error("[Download API] Error parsing URL:", e);
+      }
+    }
+    
+    console.log("[Download API] Generating presigned URL for key:", key);
+    
+    try {
+      downloadUrl = await getPresignedDownloadUrl(key, 3600, `${docData.title}.pdf`);
+      console.log("[Download API] Presigned URL generated successfully");
+    } catch (error) {
+      console.error("[Download API] Error generating presigned URL:", error);
+    }
+  } else {
+    console.log("[Download API] Using public URL directly:", downloadUrl);
+  }
+
   return NextResponse.json<
     ApiResponse<{
       url: string;
@@ -114,7 +153,7 @@ export async function POST(
   >({
     success: true,
     data: {
-      url: docData.file_path, // The R2 URL for downloading
+      url: downloadUrl, // Presigned R2 URL for downloading
       document: {
         ...docData,
         downloads: downloadCount,

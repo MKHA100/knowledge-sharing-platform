@@ -10,7 +10,6 @@ import {
   Eye,
   FileText,
   ChevronDown,
-  Bookmark,
   Loader2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +20,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { DocumentWithUploader } from "@/types";
 import { LoginModal } from "@/components/login-modal";
+import { useDocumentURLRouter } from "@/hooks/useDocumentURLRouter";
 
 export function DocumentOverlay() {
   const {
@@ -30,6 +30,13 @@ export function DocumentOverlay() {
     isLoggedIn,
     setShowLoginModal,
   } = useApp();
+  
+  // URL router for shareable document links
+  const { closeDocumentWithURL } = useDocumentURLRouter(
+    setSelectedDocument,
+    () => setSelectedDocument(null)
+  );
+  
   const [doc, setDoc] = useState<DocumentWithUploader | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -53,14 +60,24 @@ export function DocumentOverlay() {
         if (response.success && response.data) {
           setDoc(response.data);
           setUpvotes(response.data.upvotes || 0);
-          setHasUpvoted(false);
-          setHasDownvoted(false);
           // Set PDF URL for preview
           if (response.data.file_path) {
             setPdfUrl(response.data.file_path);
           }
           // Track view
           await api.documents.view(selectedDocument);
+          
+          // Check if document is liked/upvoted
+          try {
+            const likedResponse = await fetch(`/api/documents/${selectedDocument}/upvote`);
+            const likedData = await likedResponse.json();
+            if (likedData.success) {
+              setHasUpvoted(likedData.data.user_vote === "upvote");
+              setHasDownvoted(likedData.data.user_vote === "downvote");
+            }
+          } catch (e) {
+            console.error("Error checking liked status:", e);
+          }
         }
       } catch (error) {
         console.error("Error fetching document:", error);
@@ -88,13 +105,13 @@ export function DocumentOverlay() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedDocument) return;
       if (e.key === "Escape") {
-        setSelectedDocument(null);
+        closeDocumentWithURL();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedDocument, setSelectedDocument]);
+  }, [selectedDocument, closeDocumentWithURL]);
 
   const handleUpvote = async () => {
     if (!selectedDocument) return;
@@ -134,13 +151,39 @@ export function DocumentOverlay() {
     }
   };
 
-  const handleShare = () => {
-    const url = `${window.location.origin}/doc/${selectedDocument}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard!");
+  const handleShare = async () => {
+    const url = `${window.location.origin}/browse?doc=${selectedDocument}`;
+    
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard!");
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.select();
+      
+      try {
+        document.execCommand("copy");
+        toast.success("Link copied to clipboard!");
+      } catch (err) {
+        toast.error("Failed to copy link");
+      }
+      
+      document.body.removeChild(textArea);
+    }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (e?: React.MouseEvent) => {
+    // Prevent any default behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!selectedDocument || !doc) return;
 
     // Require authentication for download
@@ -151,20 +194,38 @@ export function DocumentOverlay() {
 
     setDownloading(true);
     try {
+      console.log("[Overlay] Starting download for:", selectedDocument);
       const result = await api.documents.download(selectedDocument);
+      console.log("[Overlay] Download API result:", result);
+      
       if (result.success && result.data?.url) {
-        // Trigger actual file download
-        const link = document.createElement("a");
-        link.href = result.data.url;
-        link.download = doc.title || "document.pdf";
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        console.log("[Overlay] Opening download URL:", result.data.url);
+        
+        // Open file in new tab only
+        const newWindow = window.open(result.data.url, '_blank', 'noopener,noreferrer');
+        
+        // Show thank you popup after download regardless of popup blocker
+        setShowThankYouPopup(true);
+        
+        if (!newWindow) {
+          // Fallback: create a temporary link element for download
+          const link = document.createElement('a');
+          link.href = result.data.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          toast.success("Download started!");
+        } else {
+          toast.success("Download started!");
+        }
+      } else {
+        console.error("[Overlay] Download failed:", result.error);
+        toast.error(result.error || "Failed to get download URL");
       }
-      // Show thank you popup after download
-      setShowThankYouPopup(true);
-    } catch {
+    } catch (error) {
+      console.error("[Overlay] Download error:", error);
       toast.error("Failed to download");
     } finally {
       setDownloading(false);
@@ -178,13 +239,13 @@ export function DocumentOverlay() {
       {/* Dark Backdrop - Pexels style */}
       <div
         className="absolute inset-0 bg-black/90"
-        onClick={() => setSelectedDocument(null)}
+        onClick={closeDocumentWithURL}
       />
 
       {/* Close Button - Top left like Pexels */}
       <button
-        onClick={() => setSelectedDocument(null)}
-        className="absolute left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-slate-800/80 text-white transition-colors hover:bg-slate-700"
+        onClick={closeDocumentWithURL}
+        className="absolute mr-4 left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-slate-800/80 text-white transition-colors hover:bg-slate-700"
       >
         <X className="h-5 w-5" />
       </button>
@@ -193,7 +254,7 @@ export function DocumentOverlay() {
       <div className="relative z-10 flex w-full flex-col overflow-y-auto">
         {/* Top Header Bar - Fixed */}
         <div className="sticky top-0 z-20 bg-white shadow-sm">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 sm:px-6">
             {/* Uploader Info */}
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10 border-2 border-slate-200">
@@ -209,23 +270,12 @@ export function DocumentOverlay() {
                 <p className="font-semibold text-slate-900">
                   {doc?.uploader_name || "Anonymous"}
                 </p>
-                <button className="text-sm text-slate-500 hover:text-blue-600 transition-colors">
-                  Follow
-                </button>
+                
               </div>
             </div>
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Bookmark */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-100"
-              >
-                <Bookmark className="h-5 w-5" />
-              </Button>
-
               {/* Heart/Like */}
               <Button
                 variant="outline"
@@ -243,10 +293,21 @@ export function DocumentOverlay() {
                 />
               </Button>
 
+              {/* Share Button */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleShare}
+                className="h-10 w-10 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-100"
+              >
+                <Share2 className="h-5 w-5" />
+              </Button>
+
               {/* Download Button - Teal like Pexels */}
               <Button
-                onClick={handleDownload}
+                onClick={(e) => handleDownload(e)}
                 disabled={downloading || loading}
+                type="button"
                 className="h-10 gap-2 rounded-lg bg-teal-500 px-5 font-semibold text-white shadow-sm hover:bg-teal-600 transition-colors"
               >
                 {downloading ? (

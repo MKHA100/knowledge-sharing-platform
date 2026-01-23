@@ -1,27 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSchema } from "@/lib/validations/schemas";
-import { SUBJECTS } from "@/lib/constants/subjects";
+import { 
+  findSubjectIdFromQuery, 
+  isLiteratureQuery, 
+  findLiteratureSubjectIds 
+} from "@/lib/constants/subjects";
 import type {
   ApiResponse,
   DocumentWithUploader,
   PaginatedResponse,
 } from "@/types";
-
-// Helper to find subject ID from search query
-function findSubjectIdFromQuery(query: string): string | null {
-  const normalizedQuery = query.toLowerCase().trim();
-
-  // Try to match against subject display names and search terms
-  const matchedSubject = SUBJECTS.find(
-    (s) =>
-      s.displayName.toLowerCase() === normalizedQuery ||
-      s.id === normalizedQuery ||
-      s.searchTerms.some((term) => term.toLowerCase() === normalizedQuery),
-  );
-
-  return matchedSubject?.id || null;
-}
 
 // GET /api/documents - List documents with filters
 export async function GET(request: NextRequest) {
@@ -55,6 +44,10 @@ export async function GET(request: NextRequest) {
 
   // Use search when query is provided
   if (query) {
+    // Check if this is a literature search
+    const isLitSearch = isLiteratureQuery(query);
+    const literatureSubjectIds = isLitSearch ? findLiteratureSubjectIds() : [];
+    
     // First, try to find if the query matches a subject name
     const matchedSubjectId = findSubjectIdFromQuery(query);
 
@@ -71,7 +64,7 @@ export async function GET(request: NextRequest) {
 
       if (!error && data) {
         // Transform to include file_path for DocumentWithUploader compatibility
-        const items: DocumentWithUploader[] = (data || []).map((doc: any) => ({
+        let items: DocumentWithUploader[] = (data || []).map((doc: any) => ({
           id: doc.id,
           title: doc.title,
           uploader_name: doc.uploader_name || "Anonymous",
@@ -87,6 +80,11 @@ export async function GET(request: NextRequest) {
           file_path: "",
           status: "approved",
         }));
+        
+        // If literature search, filter to only include literature subjects
+        if (isLitSearch) {
+          items = items.filter((doc) => literatureSubjectIds.includes(doc.subject));
+        }
 
         return NextResponse.json<
           ApiResponse<PaginatedResponse<DocumentWithUploader>>
@@ -120,12 +118,17 @@ export async function GET(request: NextRequest) {
       )
       .eq("status", "approved");
 
-    // Search in title with ILIKE
-    queryBuilder = queryBuilder.or(`title.ilike.%${query}%`);
+    // For literature search, filter by literature subjects
+    if (isLitSearch && literatureSubjectIds.length > 0) {
+      queryBuilder = queryBuilder.in("subject", literatureSubjectIds);
+    } else {
+      // Search in title with ILIKE
+      queryBuilder = queryBuilder.or(`title.ilike.%${query}%`);
 
-    // If query matches a subject, also filter by that subject
-    if (matchedSubjectId) {
-      queryBuilder = queryBuilder.or(`subject.eq.${matchedSubjectId}`);
+      // If query matches a subject, also filter by that subject
+      if (matchedSubjectId) {
+        queryBuilder = queryBuilder.or(`subject.eq.${matchedSubjectId}`);
+      }
     }
 
     if (subject) queryBuilder = queryBuilder.eq("subject", subject);

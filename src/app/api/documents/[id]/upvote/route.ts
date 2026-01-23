@@ -132,3 +132,46 @@ export async function POST(
       : "Removed from liked",
   });
 }
+
+// GET /api/documents/[id]/upvote - Check user's vote status
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.json<ApiResponse<{ user_vote: string | null }>>({
+      success: true,
+      data: { user_vote: null },
+    });
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: user } = await supabase
+    .from("users")
+    .select("id")
+    .eq("clerk_id", userId)
+    .single();
+
+  if (!user) {
+    return NextResponse.json<ApiResponse<{ user_vote: string | null }>>({
+      success: true,
+      data: { user_vote: null },
+    });
+  }
+
+  const { data: existingVote } = await supabase
+    .from("document_votes")
+    .select("vote_type")
+    .eq("user_id", user.id)
+    .eq("document_id", id)
+    .single();
+
+  return NextResponse.json<ApiResponse<{ user_vote: string | null }>>({
+    success: true,
+    data: { user_vote: existingVote?.vote_type || null },
+  });
+}

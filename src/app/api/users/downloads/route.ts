@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       *,
       documents (
         *,
-        users!uploader_id (
+        users!documents_uploader_id_fkey (
           name,
           avatar_url
         )
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     `,
     )
     .eq("user_id", user.id)
-    .order("downloaded_at", { ascending: false });
+    .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json<ApiResponse<null>>(

@@ -9,6 +9,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TYPE document_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE document_type AS ENUM ('book', 'short_note', 'paper', 'jumbled');
 CREATE TYPE medium_type AS ENUM ('sinhala', 'english', 'tamil');
+CREATE TYPE thank_you_status AS ENUM ('pending_review', 'approved', 'rejected');
+CREATE TYPE sentiment_category AS ENUM ('positive', 'neutral', 'negative', 'inappropriate');
 
 -- All O-Level subjects as a single flat list (no categories)
 CREATE TYPE subject_type AS ENUM (
@@ -69,7 +71,7 @@ CREATE TYPE subject_type AS ENUM (
 CREATE TYPE happiness_level AS ENUM ('helpful', 'very_helpful', 'life_saver');
 CREATE TYPE notification_type AS ENUM (
   'comment_received', 'download_milestone', 'upload_processed',
-  'document_rejected', 'system_message', 'complement'
+  'document_rejected', 'system_message', 'complement', 'thank_you'
 );
 CREATE TYPE user_role AS ENUM ('user', 'admin');
 
@@ -166,6 +168,57 @@ CREATE TABLE user_downloads (
   is_unique BOOLEAN DEFAULT false,
   UNIQUE(user_id, document_id)
 );
+
+-- Create user_saved table for bookmarked documents
+CREATE TABLE user_saved (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, document_id)
+);
+
+-- Create user_votes table for likes/dislikes
+CREATE TABLE user_votes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  vote_type TEXT CHECK (vote_type IN ('upvote', 'downvote')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, document_id)
+);
+
+-- Create thank_you_messages table for AI-moderated thank you messages
+CREATE TABLE thank_you_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  sentiment_category sentiment_category NOT NULL,
+  ai_confidence REAL NOT NULL CHECK (ai_confidence >= 0 AND ai_confidence <= 1),
+  ai_reasoning TEXT,
+  status thank_you_status NOT NULL DEFAULT 'pending_review',
+  reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  admin_edited_message TEXT,
+  notification_sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create indexes for user_saved and user_votes
+CREATE INDEX idx_user_saved_user ON user_saved(user_id);
+CREATE INDEX idx_user_saved_document ON user_saved(document_id);
+CREATE INDEX idx_user_votes_user ON user_votes(user_id);
+CREATE INDEX idx_user_votes_document ON user_votes(document_id);
+
+-- Create indexes for thank_you_messages
+CREATE INDEX idx_thank_you_sender ON thank_you_messages(sender_id);
+CREATE INDEX idx_thank_you_recipient ON thank_you_messages(recipient_id);
+CREATE INDEX idx_thank_you_document ON thank_you_messages(document_id);
+CREATE INDEX idx_thank_you_status ON thank_you_messages(status, created_at DESC);
+CREATE INDEX idx_thank_you_reviewed ON thank_you_messages(reviewed_by, reviewed_at DESC);
 
 -- Create indexes for performance
 CREATE INDEX idx_documents_status ON documents(status);
@@ -460,6 +513,11 @@ CREATE TRIGGER update_documents_updated_at
 
 CREATE TRIGGER update_failed_searches_updated_at
   BEFORE UPDATE ON failed_searches
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_thank_you_messages_updated_at
+  BEFORE UPDATE ON thank_you_messages
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 

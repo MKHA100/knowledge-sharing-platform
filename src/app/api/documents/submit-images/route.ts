@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import type { ApiResponse } from "@/types";
-import { convertImagesToPdf, isImageFile } from "@/lib/utils/pdf-converter";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+// R2 client for image uploads
+const R2 = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+  forcePathStyle: true, // Required for R2
+});
 
 /**
  * POST /api/documents/submit-images
- * Handles image-only uploads that go directly to admin for review
- * Converts images to PDF and marks as pending admin approval
+ * Handles image uploads that go to admin for review
+ * Uploads images to R2 and creates pending_images record
  */
 export async function POST(request: Request) {
   try {
@@ -29,6 +41,7 @@ export async function POST(request: Request) {
     }
 
     // Verify all files are images
+    const isImageFile = (type: string) => type.startsWith("image/");
     const allImages = files.every((file) => isImageFile(file.type));
     if (!allImages) {
       return NextResponse.json<ApiResponse<null>>(
@@ -37,40 +50,87 @@ export async function POST(request: Request) {
       );
     }
 
-    // Convert all images to buffers
-    const imageBuffers = await Promise.all(
-      files.map(async (file) => ({
-        buffer: Buffer.from(await file.arrayBuffer()),
-        mimeType: file.type,
-      })),
-    );
+    // Get user from database
+    const adminClient = createAdminClient();
+    const { data: user } = await adminClient
+      .from("users")
+      .select("id")
+      .eq("clerk_id", userId)
+      .single();
 
-    // Convert images to a single PDF
-    const pdfBuffer = await convertImagesToPdf(imageBuffers);
+    if (!user) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "User not found" },
+        { status: 404 },
+      );
+    }
 
-    // TODO: Upload PDF to R2 pending folder
-    // const r2Key = `pending/${userId}/${Date.now()}.pdf`;
-    // await uploadToR2(r2Key, pdfBuffer);
+    // Upload images to R2
+    const timestamp = Date.now();
+    const filePaths: string[] = [];
 
-    // TODO: Create document record in database with status='pending'
-    // await supabase.from('documents').insert({
-    //   uploader_id: userId,
-    //   file_path: r2Key,
-    //   status: 'pending',
-    //   source_type: 'converted_image',
-    //   ...
-    // });
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const extension = file.name.split(".").pop() || "jpg";
+      const r2Key = `pending-images/${user.id}/${timestamp}-${i}.${extension}`;
 
-    // TODO: Send notification to admins
-    // await notifyAdmins('New image upload pending review');
+      try {
+        await R2.send(
+          new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME!,
+            Key: r2Key,
+            Body: buffer,
+            ContentType: file.type,
+          })
+        );
+        filePaths.push(r2Key);
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+        // Continue with other files
+      }
+    }
+
+    if (filePaths.length === 0) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Failed to upload images" },
+        { status: 500 },
+      );
+    }
+
+    // Create pending_images record
+    const { data: insertData, error: dbError } = await adminClient
+      .from("pending_images")
+      .insert({
+        uploader_id: user.id,
+        file_paths: filePaths,
+        status: "pending",
+      })
+      .select();
+
+    if (dbError) {
+      console.error("Failed to create pending_images record:", dbError);
+      console.error("Database error details:", {
+        message: dbError.message,
+        details: dbError.details,
+        hint: dbError.hint,
+        code: dbError.code,
+      });
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: `Failed to save submission: ${dbError.message}` },
+        { status: 500 },
+      );
+    }
+
+    console.log("Successfully created pending_images record:", insertData);
 
     return NextResponse.json<
       ApiResponse<{ message: string; fileCount: number; status: string }>
     >({
       success: true,
       data: {
-        message: `${files.length} image(s) submitted for admin review`,
-        fileCount: files.length,
+        message: `${filePaths.length} image(s) submitted for admin review`,
+        fileCount: filePaths.length,
         status: "pending",
       },
     });

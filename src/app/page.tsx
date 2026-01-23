@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Suspense } from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,22 +19,20 @@ import {
   Music,
   ArrowRight,
   Sparkles,
-  User,
-  Menu,
-  X,
+  Send,
+  MessageSquare,
+  Instagram,
+  Linkedin,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { AppProvider, useApp } from "@/lib/app-context";
 import { ToastProvider } from "@/components/toast-provider";
+import { toast } from "sonner";
 import { LoginModal } from "@/components/login-modal";
 import { WelcomeToast } from "@/components/welcome-toast";
+import { LandingNavbar } from "@/components/landing-navbar";
 import { SUBJECTS, getSubjectDisplayName } from "@/lib/constants/subjects";
 import { api } from "@/lib/api/client";
 import type { DocumentWithUploader } from "@/types";
@@ -63,18 +61,49 @@ function Loading() {
 
 function LandingPage() {
   const router = useRouter();
-  const { isLoggedIn, setShowLoginModal } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [feedbackName, setFeedbackName] = useState("");
+  const [feedbackEmail, setFeedbackEmail] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!feedbackName || !feedbackEmail || !feedbackMessage) {
+      return;
+    }
+
+    setIsSubmittingFeedback(true);
+
+    try {
+      const response = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: feedbackName,
+          email: feedbackEmail,
+          message: feedbackMessage,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setFeedbackName("");
+        setFeedbackEmail("");
+        setFeedbackMessage("");
+        toast.success("Thank you! Your feedback helps us improve StudyShare.");
+      } else {
+        toast.error(result.error || "Failed to submit feedback. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      toast.error("Failed to submit feedback. Please try again.");
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,153 +120,7 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Floating Navigation */}
-      <nav
-        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
-          isScrolled ? "py-3" : "py-4"
-        }`}
-      >
-        <div className="mx-auto max-w-6xl px-4">
-          <div
-            className={`flex items-center justify-between rounded-2xl px-5 py-3 transition-all duration-300 ${
-              isScrolled ? "glass shadow-lg" : "bg-transparent"
-            }`}
-          >
-            {/* Logo */}
-            <Link href="/" className="group flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25">
-                <BookOpen className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-slate-900">
-                study<span className="text-blue-600">share</span>
-              </span>
-            </Link>
-
-            {/* Desktop Nav */}
-            <div className="hidden items-center gap-1 md:flex">
-              <Link
-                href="/browse"
-                className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900"
-              >
-                Browse
-              </Link>
-              <Link
-                href="/browse?type=paper"
-                className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900"
-              >
-                Past Papers
-              </Link>
-              <Link
-                href="/browse?type=note"
-                className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900"
-              >
-                Notes
-              </Link>
-            </div>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-3">
-              {isLoggedIn ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200"
-                    >
-                      <User className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl">
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">My Dashboard</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard?tab=account">Settings</Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowLoginModal(true)}
-                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 md:block"
-                >
-                  Sign in
-                </button>
-              )}
-
-              <Link href="/upload" className="hidden sm:block">
-                <Button className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-5 font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload
-                </Button>
-              </Link>
-
-              {/* Mobile Menu Toggle */}
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 md:hidden"
-              >
-                {mobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="glass mt-2 rounded-2xl p-4 md:hidden">
-              <div className="flex flex-col gap-1">
-                <Link
-                  href="/browse"
-                  className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Browse All
-                </Link>
-                <Link
-                  href="/browse?type=paper"
-                  className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Past Papers
-                </Link>
-                <Link
-                  href="/browse?type=note"
-                  className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Notes
-                </Link>
-                <div className="my-2 border-t border-slate-200" />
-                {!isLoggedIn && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLoginModal(true);
-                      setMobileMenuOpen(false);
-                    }}
-                    className="rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
-                  >
-                    Sign in
-                  </button>
-                )}
-                <Link
-                  href="/upload"
-                  className="rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-3 text-center text-sm font-medium text-white"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Upload Document
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
+      <LandingNavbar />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pb-16 pt-32">
@@ -402,38 +285,165 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Feedback Section */}
+      <section className="border-t border-slate-100 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-20">
+        <div className="mx-auto max-w-5xl px-4">
+          <div className="text-center mb-12">
+            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <MessageSquare className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="mb-3 text-3xl font-bold text-slate-900">Help Us Improve</h2>
+            <p className="mx-auto max-w-2xl text-lg text-slate-600">
+              Your ideas shape the future of StudyShare. Tell us what features you need or how we can better serve you.
+            </p>
+          </div>
+
+          <div className="mx-auto max-w-2xl rounded-3xl border border-white/50 bg-white/70 p-8 shadow-2xl backdrop-blur-xl">
+            <form onSubmit={handleFeedbackSubmit} className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="feedback-name" className="mb-2 block text-sm font-medium text-slate-700">
+                    Your Name
+                  </label>
+                  <input
+                    id="feedback-name"
+                    type="text"
+                    placeholder="Enter your name"
+                    value={feedbackName}
+                    onChange={(e) => setFeedbackName(e.target.value)}
+                    required
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="feedback-email" className="mb-2 block text-sm font-medium text-slate-700">
+                    Your Email
+                  </label>
+                  <input
+                    id="feedback-email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={feedbackEmail}
+                    onChange={(e) => setFeedbackEmail(e.target.value)}
+                    required
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="feedback-message" className="mb-2 block text-sm font-medium text-slate-700">
+                  Your Ideas & Suggestions
+                </label>
+                <textarea
+                  id="feedback-message"
+                  placeholder="Tell us what features you'd like to see, improvements you recommend, or how we can make StudyShare more suitable for your needs..."
+                  value={feedbackMessage}
+                  onChange={(e) => setFeedbackMessage(e.target.value)}
+                  required
+                  rows={6}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isSubmittingFeedback}
+                className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-base font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl disabled:opacity-50"
+              >
+                {isSubmittingFeedback ? (
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <>
+                    <Send className="mr-2 h-5 w-5" />
+                    Send Your Ideas
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-slate-50 py-12">
         <div className="mx-auto max-w-5xl px-4">
-          <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
-                <BookOpen className="h-4 w-4 text-white" />
+          <div className="grid gap-8 md:grid-cols-3">
+            {/* Brand */}
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+                  <BookOpen className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold text-slate-900">
+                  study<span className="text-blue-600">share</span>
+                </span>
               </div>
-              <span className="font-bold text-slate-900">
-                study<span className="text-blue-600">share</span>
-              </span>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                A community-driven platform for Sri Lankan O-Level students to share and access quality study materials.
+              </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
-              <Link
-                href="/browse"
-                className="transition-colors hover:text-slate-900"
-              >
-                Browse
-              </Link>
-              <Link
-                href="/upload"
-                className="transition-colors hover:text-slate-900"
-              >
-                Upload
-              </Link>
-              <Link href="#" className="transition-colors hover:text-slate-900">
-                About
-              </Link>
-              <Link href="#" className="transition-colors hover:text-slate-900">
-                Contact
-              </Link>
+            {/* Quick Links */}
+            <div>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">Quick Links</h3>
+              <div className="flex flex-col gap-3 text-sm text-slate-500">
+                <Link href="/browse" className="transition-colors hover:text-slate-900">
+                  Browse Documents
+                </Link>
+                <Link href="/upload" className="transition-colors hover:text-slate-900">
+                  Upload Materials
+                </Link>
+                <Link href="/dashboard" className="transition-colors hover:text-slate-900">
+                  My Dashboard
+                </Link>
+              </div>
+            </div>
+
+            {/* Connect */}
+            <div>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">Connect With Us</h3>
+              <p className="mb-4 text-sm text-slate-500">
+                Have questions or want to get in touch? Reach out through any of these platforms.
+              </p>
+              <div className="flex gap-3">
+                <a
+                  href="https://wa.me/YOUR_PHONE_NUMBER"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 transition-all hover:bg-emerald-600 hover:text-white hover:shadow-lg"
+                  aria-label="WhatsApp"
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                  </svg>
+                </a>
+                <a
+                  href="https://instagram.com/YOUR_HANDLE"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-100 text-pink-600 transition-all hover:bg-pink-600 hover:text-white hover:shadow-lg"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a
+                  href="https://linkedin.com/in/YOUR_PROFILE"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 transition-all hover:bg-blue-600 hover:text-white hover:shadow-lg"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="h-5 w-5" />
+                </a>
+                <a
+                  href="mailto:your.email@example.com"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-all hover:bg-slate-600 hover:text-white hover:shadow-lg"
+                  aria-label="Email"
+                >
+                  <Mail className="h-5 w-5" />
+                </a>
+              </div>
             </div>
           </div>
 

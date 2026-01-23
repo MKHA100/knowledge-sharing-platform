@@ -14,6 +14,7 @@ import { api } from "@/lib/api/client";
 import { getSubjectDisplayName, SUBJECTS } from "@/lib/constants/subjects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useDocumentURLRouter } from "@/hooks/useDocumentURLRouter";
 import {
   Select,
   SelectContent,
@@ -30,13 +31,23 @@ function BrowseContent() {
   const initialSubject = searchParams.get("subject");
   const initialQuery = searchParams.get("q");
   const initialMedium = searchParams.get("medium") || "all";
+  const initialTypeParam = searchParams.get("type") || "all";
+  // Map 'note' to 'short_note' and 'paper' stays as 'paper'
+  const initialType = initialTypeParam === "note" ? "short_note" : initialTypeParam;
 
-  const { setShowLoginModal } = useApp();
+  const { setShowLoginModal, setSelectedDocument } = useApp();
+  
+  // URL router for shareable document links
+  const { openDocumentWithURL } = useDocumentURLRouter(
+    setSelectedDocument,
+    () => setSelectedDocument(null)
+  );
+  
   const [selectedSubject, setSelectedSubject] = useState<string | null>(
     initialSubject,
   );
   const [medium, setMedium] = useState(initialMedium);
-  const [documentType, setDocumentType] = useState("all");
+  const [documentType, setDocumentType] = useState(initialType);
   const [sortBy, setSortBy] = useState("popular");
   const [searchQuery, setSearchQuery] = useState(initialQuery || "");
 
@@ -69,22 +80,34 @@ function BrowseContent() {
           setDocuments(items);
           setTotal(response.data?.total || 0);
 
-          // Calculate counts for each document type
-          const bookCount = items.filter(
-            (d: DocumentWithUploader) => d.type === "book",
-          ).length;
-          const shortNoteCount = items.filter(
-            (d: DocumentWithUploader) => d.type === "short_note",
-          ).length;
-          const paperCount = items.filter(
-            (d: DocumentWithUploader) => d.type === "paper",
-          ).length;
+          // Fetch counts from API separately to avoid flickering
+          // Calculate from all documents without filters
+          const countsParams: Record<string, string> = {};
+          if (searchQuery) countsParams.query = searchQuery;
+          if (selectedSubject && selectedSubject !== "all")
+            countsParams.subject = selectedSubject;
+          if (medium !== "all") countsParams.medium = medium;
+          if (sortBy) countsParams.sortBy = sortBy;
+          
+          const allDocsResponse = await api.documents.list(countsParams);
+          if (allDocsResponse.success) {
+            const allItems = allDocsResponse.data?.items || [];
+            const bookCount = allItems.filter(
+              (d: DocumentWithUploader) => d.type === "book",
+            ).length;
+            const shortNoteCount = allItems.filter(
+              (d: DocumentWithUploader) => d.type === "short_note",
+            ).length;
+            const paperCount = allItems.filter(
+              (d: DocumentWithUploader) => d.type === "paper",
+            ).length;
 
-          setCounts({
-            books: bookCount,
-            shortNotes: shortNoteCount,
-            papers: paperCount,
-          });
+            setCounts({
+              books: bookCount,
+              shortNotes: shortNoteCount,
+              papers: paperCount,
+            });
+          }
         } else {
           setError(response.error || "Failed to load documents");
         }
@@ -306,27 +329,27 @@ function BrowseContent() {
           <div className="flex items-center gap-3 pb-4">
             {/* Language Selector */}
             <Select value={medium} onValueChange={setMedium}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-slate-300 bg-white text-sm">
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-slate-300 bg-white text-sm text-slate-900">
                 <SelectValue placeholder="Language" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Languages</SelectItem>
-                <SelectItem value="sinhala">Sinhala</SelectItem>
-                <SelectItem value="english">English</SelectItem>
-                <SelectItem value="tamil">Tamil</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectContent className="rounded-xl bg-white">
+                <SelectItem value="all" className="text-slate-900">All Languages</SelectItem>
+                <SelectItem value="sinhala" className="text-slate-900">Sinhala</SelectItem>
+                <SelectItem value="english" className="text-slate-900">English</SelectItem>
+                <SelectItem value="tamil" className="text-slate-900">Tamil</SelectItem>
+                </SelectContent>
+              </Select>
 
             {/* Sort Selector */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-slate-300 bg-white text-sm">
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-slate-300 bg-white text-sm text-slate-900">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="popular">Popular</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="downloads">Most Downloads</SelectItem>
-                <SelectItem value="upvotes">Most Upvotes</SelectItem>
+              <SelectContent className="rounded-xl bg-white">
+                <SelectItem value="popular" className="text-slate-900">Popular</SelectItem>
+                <SelectItem value="newest" className="text-slate-900">Newest</SelectItem>
+                <SelectItem value="downloads" className="text-slate-900">Most Downloads</SelectItem>
+                <SelectItem value="upvotes" className="text-slate-900">Most Upvotes</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -358,7 +381,11 @@ function BrowseContent() {
         {!loading && !error && documents.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {documents.map((doc) => (
-              <DocumentCard key={doc.id} document={doc} />
+              <DocumentCard 
+                key={doc.id} 
+                document={doc} 
+                onDocumentClick={openDocumentWithURL}
+              />
             ))}
           </div>
         )}
