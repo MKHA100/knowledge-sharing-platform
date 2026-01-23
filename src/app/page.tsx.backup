@@ -115,7 +115,7 @@ function LandingPage() {
   };
 
   const handleCategoryClick = (categoryId: string) => {
-    router.push(`/browse?category=${categoryId}`);
+    router.push(`/browse/${categoryId}`);
   };
 
   return (

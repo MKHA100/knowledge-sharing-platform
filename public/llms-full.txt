@@ -1,0 +1,173 @@
+# StudyShare - Complete Documentation
+
+> Free O-Level study materials for Sri Lankan students
+
+StudyShare is a community-driven platform where students share and download study materials for the Sri Lankan Ordinary Level (O-Level) curriculum. All materials are free and available in Sinhala, English, and Tamil.
+
+## Platform Overview
+
+StudyShare connects students across Sri Lanka by enabling them to share educational resources. Students can upload their notes, past papers, and study materials to help others prepare for O-Level examinations.
+
+### Document Types
+
+1. **Past Papers** (`paper`)
+   - Official O-Level examination papers
+   - Model papers for practice
+   - Includes answers where available
+
+2. **Short Notes** (`short_note`)
+   - Concise summaries of subject topics
+   - Student-created study guides
+   - Quick revision materials
+
+3. **Textbooks/Books** (`book`)
+   - Educational textbooks
+   - Reference books
+   - Supplementary reading materials
+
+### Available Mediums
+
+- **Sinhala** (සිංහල) - Primary language for most students
+- **English** - For English-medium schools
+- **Tamil** (தமிழ்) - For Tamil-medium students
+
+## Complete Subject List (52 Subjects)
+
+### Religion Subjects
+1. Buddhism
+2. Christianity
+3. Islam
+4. Catholicism
+5. Saivanery (Hindu)
+
+### Core Compulsory Subjects
+6. English
+7. Sinhala Language & Literature
+8. Tamil Language & Literature
+9. Mathematics
+10. History
+11. Science
+
+### Category I - Commerce & Languages
+12. Civic Education
+13. Business & Accounting Studies
+14. Geography
+15. Entrepreneurship Studies
+16. Second Language (Sinhala)
+17. Second Language (Tamil)
+18. Pali
+19. Sanskrit
+20. French
+21. German
+22. Hindi
+23. Japanese
+24. Arabic
+25. Korean
+26. Chinese
+27. Russian
+
+### Category II - Arts & Aesthetics
+28. Art
+29. Oriental Music
+30. Carnatic Music
+31. Western Music
+32. Drama & Theatre (Sinhala)
+33. Drama & Theatre (Tamil)
+34. Drama & Theatre (English)
+35. Sinhala Dancing
+36. Tamil Dancing (Bharatha Natyam)
+37. Home Economics
+38. Health & Physical Education
+
+### Category III - Technology & Practical
+39. Information & Communication Technology
+40. Agriculture & Food Technology
+41. Aquatic Bioresources Technology
+42. Art & Crafts
+43. Design & Construction Technology
+44. Design & Mechanical Technology
+45. Design, Electrical & Electronic Technology
+46. Electronic Writing & Shorthand (Sinhala)
+47. Electronic Writing & Shorthand (Tamil)
+48. Electronic Writing & Shorthand (English)
+
+### Special Subjects
+49. Communication & Media Studies
+50. Sri Lankan Sign Language
+51. Local Crafts
+52. Appreciation of English Literary Texts
+
+## URL Structure
+
+### Public Pages (Indexable)
+- Homepage: https://studyshare.lk/
+- Browse All: https://studyshare.lk/browse
+- Browse by Subject: https://studyshare.lk/browse/{subject-slug}
+- FAQ: https://studyshare.lk/faq
+
+### Subject URL Examples
+- Mathematics: https://studyshare.lk/browse/mathematics
+- Science: https://studyshare.lk/browse/science
+- Buddhism: https://studyshare.lk/browse/buddhism
+- ICT: https://studyshare.lk/browse/information-communication-technology
+
+### Private Pages (Not Indexable)
+- Dashboard: /dashboard (requires login)
+- Upload: /upload (requires login)
+- Admin: /admin (admin only)
+
+## Filtering System
+
+Materials can be filtered by:
+- **Subject**: Any of the 52 subjects
+- **Type**: Book, Short Note, Past Paper
+- **Medium**: Sinhala, English, Tamil
+- **Search**: Full-text search across titles and descriptions
+
+## API Information
+
+StudyShare provides a JSON endpoint for AI systems:
+- Machine-readable data: https://studyshare.lk/llms.json
+
+## Frequently Asked Questions
+
+### What is StudyShare?
+StudyShare is a free platform for Sri Lankan O-Level students to share and download study materials including past papers, notes, and textbooks.
+
+### Are the materials free?
+Yes, all materials on StudyShare are completely free to download and use for educational purposes.
+
+### What subjects are covered?
+We cover all 52 subjects in the Sri Lankan O-Level curriculum, from core subjects like Mathematics and Science to specialized subjects like ICT and Art.
+
+### In what languages are materials available?
+Materials are available in Sinhala, English, and Tamil to serve all Sri Lankan students.
+
+### How do I download materials?
+Browse or search for materials, then click the download button. You may need to create a free account to download.
+
+### Can I upload my own notes?
+Yes! Registered users can upload their own study materials to help other students. We review uploads for quality.
+
+### Are these official past papers?
+We have both official examination papers and model papers. Each document indicates its source.
+
+### How do I report incorrect content?
+Use the feedback form on our homepage or contact us through the website.
+
+## Technical Information
+
+- Platform: Next.js 14 (App Router)
+- Database: Supabase (PostgreSQL)
+- Storage: Cloudflare R2
+- Authentication: Clerk
+
+## Contact & Support
+
+For questions, suggestions, or issues:
+- Use the feedback form on the homepage
+- Materials are community-contributed
+
+---
+
+Last updated: January 2026

@@ -5,12 +5,11 @@ import { uploadToR2 } from "@/lib/r2/client";
 import { uploadDocumentSchema } from "@/lib/validations/schemas";
 import { isValidFileType, getMimeType } from "@/lib/utils";
 import { convertToPdf, isImageFile } from "@/lib/utils/pdf-converter";
+import { generatePDFThumbnail } from "@/lib/utils/thumbnail-generator";
 import type { ApiResponse, Document } from "@/types";
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
-
-  console.log("[Upload API] Starting upload, userId:", userId);
 
   if (!userId) {
     return NextResponse.json<ApiResponse<null>>(
@@ -28,10 +27,7 @@ export async function POST(request: NextRequest) {
     .eq("clerk_id", userId)
     .single();
 
-  console.log("[Upload API] User lookup result:", { user, userError });
-
   if (!user) {
-    console.error("[Upload API] User not found for clerk_id:", userId);
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: "User not found" },
       { status: 404 },
@@ -110,7 +106,22 @@ export async function POST(request: NextRequest) {
           "documents",
         );
 
-        console.log("[Upload API] R2 upload successful:", uploaded);
+        // Generate thumbnail from the PDF
+        let thumbnailUrl: string | null = null;
+        try {
+          const thumbnailBuffer = await generatePDFThumbnail(pdfBuffer, 600, 85);
+          const thumbnailFileName = `${file.name.replace(/\.[^/.]+$/, "")}_thumb.jpg`;
+          const thumbnailUpload = await uploadToR2(
+            thumbnailBuffer,
+            thumbnailFileName,
+            "image/jpeg",
+            "thumbnails",
+          );
+          thumbnailUrl = thumbnailUpload.url;
+        } catch (thumbnailError) {
+          console.error(`Failed to generate thumbnail for ${file.name}:`, thumbnailError);
+          // Continue without thumbnail - not a critical failure
+        }
 
         // User has verified the details, so auto-approve
         // Only image uploads (handled separately) go to admin
@@ -122,16 +133,12 @@ export async function POST(request: NextRequest) {
           uploader_id: user.id,
           file_path: uploaded.url,
           file_size: uploaded.size,
+          thumbnail_url: thumbnailUrl,
           type: documentType,
           subject: subject,
           medium: medium,
           status,
         };
-
-        console.log(
-          "[Upload API] Attempting database insert with:",
-          insertData,
-        );
 
         const { data: document, error: insertError } = await supabase
           .from("documents")
@@ -139,13 +146,7 @@ export async function POST(request: NextRequest) {
           .select()
           .single();
 
-        console.log("[Upload API] Database insert result:", {
-          document,
-          insertError,
-        });
-
         if (insertError) {
-          console.error("[Upload API] Database insert error:", insertError);
           errors.push(`${file.name}: ${insertError.message}`);
           continue;
         }

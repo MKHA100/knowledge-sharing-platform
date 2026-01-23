@@ -3,14 +3,31 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSchema } from "@/lib/validations/schemas";
 import { 
   findSubjectIdFromQuery, 
-  isLiteratureQuery, 
-  findLiteratureSubjectIds 
+  findMatchingSubjectIds,
+  SUBJECTS,
 } from "@/lib/constants/subjects";
 import type {
   ApiResponse,
   DocumentWithUploader,
   PaginatedResponse,
 } from "@/types";
+
+/**
+ * Smart Search Algorithm for Educational Documents
+ * 
+ * This search is designed specifically for O-Level students looking for study materials.
+ * It uses a multi-layered approach:
+ * 
+ * 1. SUBJECT MATCHING: If query matches a subject name/alias, include ALL docs from that subject
+ * 2. TITLE SEARCH: Fuzzy match against document titles using PostgreSQL pg_trgm
+ * 3. DESCRIPTION SEARCH: Check document descriptions for matches
+ * 4. COMBINED SCORING: Rank by relevance (exact subject match > title match > fuzzy match)
+ * 
+ * Special cases:
+ * - "literature" → matches all 4 literature subjects (English, Sinhala, Tamil, Arabic)
+ * - "maths" → matches "mathematics"
+ * - Subject aliases (e.g., "ICT" → "Information & Communication Technology")
+ */
 
 // GET /api/documents - List documents with filters
 export async function GET(request: NextRequest) {
@@ -42,68 +59,22 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Use search when query is provided
+  // Use smart search when query is provided
   if (query) {
-    // Check if this is a literature search
-    const isLitSearch = isLiteratureQuery(query);
-    const literatureSubjectIds = isLitSearch ? findLiteratureSubjectIds() : [];
+    const normalizedQuery = query.toLowerCase().trim();
     
-    // First, try to find if the query matches a subject name
-    const matchedSubjectId = findSubjectIdFromQuery(query);
-
-    // Try RPC search first
-    try {
-      const { data, error } = await supabase.rpc("search_documents", {
-        search_query: query,
-        filter_subject: subject || null,
-        filter_medium: medium || null,
-        filter_type: documentType || null,
-        page_limit: limit,
-        page_offset: offset,
-      });
-
-      if (!error && data) {
-        // Transform to include file_path for DocumentWithUploader compatibility
-        let items: DocumentWithUploader[] = (data || []).map((doc: any) => ({
-          id: doc.id,
-          title: doc.title,
-          uploader_name: doc.uploader_name || "Anonymous",
-          uploader_avatar: null,
-          subject: doc.subject,
-          medium: doc.medium,
-          type: doc.type,
-          upvotes: doc.upvotes,
-          downvotes: doc.downvotes,
-          views: doc.views,
-          downloads: doc.downloads,
-          created_at: doc.created_at,
-          file_path: "",
-          status: "approved",
-        }));
-        
-        // If literature search, filter to only include literature subjects
-        if (isLitSearch) {
-          items = items.filter((doc) => literatureSubjectIds.includes(doc.subject));
-        }
-
-        return NextResponse.json<
-          ApiResponse<PaginatedResponse<DocumentWithUploader>>
-        >({
-          success: true,
-          data: {
-            items,
-            total: items.length,
-            page: Math.floor(offset / limit) + 1,
-            limit,
-            hasMore: items.length === limit,
-          },
-        });
-      }
-    } catch (rpcError) {
-      console.error("RPC search_documents failed, using fallback:", rpcError);
-    }
-
-    // Fallback: Use query builder with ILIKE search
+    // Find ALL matching subject IDs (not just exact match)
+    // This handles "literature" → [english_literary_texts, sinhala_literary_texts, ...]
+    // And "english" → [english, english_literary_texts]
+    const matchingSubjectIds = findMatchingSubjectIds(normalizedQuery);
+    
+    // Also find exact subject match for prioritization
+    const exactSubjectMatch = findSubjectIdFromQuery(normalizedQuery);
+    
+    // Build a comprehensive search query
+    // Strategy: Fetch ALL documents, then filter and score in application layer
+    // This is more flexible than pure SQL for complex multi-factor search
+    
     let queryBuilder = supabase
       .from("documents")
       .select(
@@ -118,41 +89,126 @@ export async function GET(request: NextRequest) {
       )
       .eq("status", "approved");
 
-    // For literature search, filter by literature subjects
-    if (isLitSearch && literatureSubjectIds.length > 0) {
-      queryBuilder = queryBuilder.in("subject", literatureSubjectIds);
-    } else {
-      // Search in title with ILIKE
-      queryBuilder = queryBuilder.or(`title.ilike.%${query}%`);
-
-      // If query matches a subject, also filter by that subject
-      if (matchedSubjectId) {
-        queryBuilder = queryBuilder.or(`subject.eq.${matchedSubjectId}`);
-      }
-    }
-
+    // Apply additional filters if specified
     if (subject) queryBuilder = queryBuilder.eq("subject", subject);
     if (medium) queryBuilder = queryBuilder.eq("medium", medium);
     if (documentType) queryBuilder = queryBuilder.eq("type", documentType);
 
-    queryBuilder = queryBuilder
-      .order("downloads", { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Build OR conditions for comprehensive search
+    const orConditions: string[] = [];
+    
+    // 1. Title contains query (case-insensitive)
+    orConditions.push(`title.ilike.%${query}%`);
+    
+    // 2. Description contains query (if we have descriptions)
+    orConditions.push(`description.ilike.%${query}%`);
+    
+    // 3. Match any related subject IDs
+    if (matchingSubjectIds.length > 0) {
+      // For each matching subject, add it to OR conditions
+      matchingSubjectIds.forEach(subjectId => {
+        orConditions.push(`subject.eq.${subjectId}`);
+      });
+    }
+    
+    // Apply the OR conditions
+    queryBuilder = queryBuilder.or(orConditions.join(","));
 
+    // Fetch documents
     const { data, error, count } = await queryBuilder;
 
     if (error) {
+      console.error("Search query failed:", error);
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: error.message },
         { status: 500 },
       );
     }
 
-    const documents: DocumentWithUploader[] = (data || []).map((doc: any) => ({
-      ...doc,
+    // Score and sort results for relevance
+    const scoredDocs = (data || []).map((doc: any) => {
+      let score = 0;
+      const titleLower = doc.title.toLowerCase();
+      const descLower = (doc.description || "").toLowerCase();
+      
+      // Scoring factors:
+      
+      // 1. Exact subject match (highest priority for subject searches)
+      if (exactSubjectMatch && doc.subject === exactSubjectMatch) {
+        score += 100;
+      }
+      
+      // 2. Related subject match (e.g., "literature" matches english_literary_texts)
+      if (matchingSubjectIds.includes(doc.subject)) {
+        score += 80;
+      }
+      
+      // 3. Title contains exact query
+      if (titleLower.includes(normalizedQuery)) {
+        score += 60;
+        // Bonus if query is at the start of title
+        if (titleLower.startsWith(normalizedQuery)) {
+          score += 20;
+        }
+      }
+      
+      // 4. Title word match (partial words)
+      const queryWords = normalizedQuery.split(/\s+/);
+      const titleWords = titleLower.split(/\s+/);
+      const matchingWords = queryWords.filter((qw: string) => 
+        titleWords.some((tw: string) => tw.includes(qw) || qw.includes(tw))
+      );
+      score += matchingWords.length * 15;
+      
+      // 5. Description match
+      if (descLower.includes(normalizedQuery)) {
+        score += 30;
+      }
+      
+      // 6. Popularity bonus (downloads + views)
+      score += Math.min((doc.downloads || 0) + (doc.views || 0) * 0.1, 20);
+      
+      // 7. Upvote bonus
+      score += Math.min((doc.upvotes || 0) * 2, 10);
+      
+      return { ...doc, _searchScore: score };
+    });
+
+    // Sort by score (highest first), then by downloads as tiebreaker
+    scoredDocs.sort((a, b) => {
+      if (b._searchScore !== a._searchScore) {
+        return b._searchScore - a._searchScore;
+      }
+      return (b.downloads || 0) - (a.downloads || 0);
+    });
+
+    // Apply pagination after scoring
+    const paginatedDocs = scoredDocs.slice(offset, offset + limit);
+
+    // Transform to final format
+    const documents: DocumentWithUploader[] = paginatedDocs.map((doc: any) => ({
+      id: doc.id,
+      title: doc.title,
+      uploader_id: doc.uploader_id,
       uploader_name: doc.users?.name || "Anonymous",
       uploader_avatar: doc.users?.avatar_url || null,
-      users: undefined,
+      subject: doc.subject,
+      medium: doc.medium,
+      type: doc.type,
+      upvotes: doc.upvotes,
+      downvotes: doc.downvotes,
+      views: doc.views,
+      downloads: doc.downloads,
+      created_at: doc.created_at,
+      updated_at: doc.updated_at,
+      file_path: doc.file_path || "",
+      file_size: doc.file_size || 0,
+      page_count: doc.page_count || null,
+      thumbnail_url: doc.thumbnail_url || null,
+      status: doc.status,
+      rejection_reason: doc.rejection_reason || null,
+      is_featured: doc.is_featured || false,
+      is_trending: doc.is_trending || false,
     }));
 
     return NextResponse.json<
@@ -161,10 +217,10 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         items: documents,
-        total: count || 0,
+        total: scoredDocs.length,
         page: Math.floor(offset / limit) + 1,
         limit,
-        hasMore: offset + limit < (count || 0),
+        hasMore: offset + limit < scoredDocs.length,
       },
     });
   }

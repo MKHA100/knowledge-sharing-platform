@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
     .from("comments")
     .insert({
       document_id: documentId,
-      sender_id: null, // Admin-created, no real sender
-      sender_display_name: senderDisplayName,
-      happiness_level: happinessLevel,
-      message,
+      user_id: null, // Admin-created, no real user
+      admin_name: senderDisplayName,
+      happiness: happinessLevel,
+      content: message,
       is_admin_complement: true,
     })
     .select()
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       type: "complement",
       title: `${happinessEmoji[happinessLevel]} ${senderDisplayName} loved your notes!`,
       message: `"${message}" on your "${document.title}"`,
-      link: `/doc/${document.id}`,
+      action_url: `/doc/${document.id}`,
     });
   }
 

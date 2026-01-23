@@ -162,7 +162,6 @@ export async function POST(request: Request) {
 
           // If document has many pages, sample only key pages
           if (shouldSamplePdf(metadata.pageCount)) {
-            console.log(`Sampling PDF: ${metadata.pageCount} pages → 3 pages`);
             const sampledPdf = await createSampledPdf(pdfBuffer);
             pdfBase64 = sampledPdf.toString("base64");
           } else {
@@ -172,7 +171,6 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error("Error processing file:", error);
         // Fall back to filename-only analysis
-        console.log("File processing failed, using filename-only analysis");
       }
     }
 

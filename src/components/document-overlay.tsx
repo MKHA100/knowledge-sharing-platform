@@ -44,6 +44,29 @@ export function DocumentOverlay() {
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [hasDownvoted, setHasDownvoted] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
+  const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(null);
+
+  // 25MB limit for Google Docs Viewer
+  const MAX_GOOGLE_DOCS_SIZE = 25 * 1024 * 1024;
+  const isFileTooLarge = fileSizeBytes !== null && fileSizeBytes > MAX_GOOGLE_DOCS_SIZE;
+
+  // Google Docs Viewer URL for mobile devices
+  const googleDocsUrl = pdfUrl
+    ? `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`
+    : null;
+
+  // Detect mobile/tablet devices
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor;
+      // Include tablets (iPad, Android tablets) as mobile for consistent PDF viewing
+      const mobileRegex = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i;
+      setIsMobile(mobileRegex.test(userAgent));
+    };
+    checkMobile();
+  }, []);
 
   // Fetch document from API
   useEffect(() => {
@@ -63,7 +86,18 @@ export function DocumentOverlay() {
           // Set PDF URL for preview
           if (response.data.file_path) {
             setPdfUrl(response.data.file_path);
+            // Fetch file size for large file detection
+            try {
+              const headResponse = await fetch(response.data.file_path, { method: 'HEAD' });
+              const contentLength = headResponse.headers.get('content-length');
+              if (contentLength) {
+                setFileSizeBytes(parseInt(contentLength, 10));
+              }
+            } catch (e) {
+              console.error('Error fetching file size:', e);
+            }
           }
+          setIframeLoading(true);
           // Track view
           await api.documents.view(selectedDocument);
           
@@ -337,13 +371,52 @@ export function DocumentOverlay() {
                 </h1>
 
                 {/* PDF Preview */}
-                <div className="overflow-hidden rounded-xl bg-slate-800 shadow-2xl">
+                <div className="relative overflow-hidden rounded-xl bg-slate-800 shadow-2xl">
+                  {/* Loading indicator for iframe */}
+                  {iframeLoading && pdfUrl && !(isMobile && isFileTooLarge) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-800 z-10">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="h-10 w-10 animate-spin text-blue-400" />
+                        <p className="text-sm text-slate-400">Loading document...</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   {pdfUrl ? (
-                    <iframe
-                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`}
-                      className="h-[70vh] w-full min-h-[500px]"
-                      title={doc?.title || "Document Preview"}
-                    />
+                    // Mobile/Tablet: Check if file is too large for Google Docs
+                    isMobile && isFileTooLarge ? (
+                      <div className="flex h-[60vh] min-h-[400px] flex-col items-center justify-center bg-slate-700 px-6 text-center">
+                        <FileText className="mb-4 h-20 w-20 text-slate-500" />
+                        <p className="text-lg font-medium text-slate-300">Document Too Large for Preview</p>
+                        <p className="mt-2 text-sm text-slate-400">
+                          This file is {(fileSizeBytes! / (1024 * 1024)).toFixed(1)}MB, which exceeds the preview limit.
+                        </p>
+                        <Button
+                          onClick={handleDownload}
+                          disabled={downloading}
+                          className="mt-6 gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-3 font-semibold text-white shadow-lg"
+                        >
+                          <Download className="h-5 w-5" />
+                          {downloading ? "Downloading..." : "Download Instead"}
+                        </Button>
+                      </div>
+                    ) : isMobile ? (
+                      // Mobile/Tablet: Use Google Docs Viewer
+                      <iframe
+                        src={googleDocsUrl!}
+                        className="h-[60vh] w-full min-h-[400px]"
+                        title={doc?.title || "Document Preview"}
+                        onLoad={() => setIframeLoading(false)}
+                      />
+                    ) : (
+                      // Desktop: Use native PDF rendering
+                      <iframe
+                        src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+                        className="h-[70vh] w-full min-h-[500px]"
+                        title={doc?.title || "Document Preview"}
+                        onLoad={() => setIframeLoading(false)}
+                      />
+                    )
                   ) : (
                     <div className="flex h-[70vh] min-h-[500px] flex-col items-center justify-center bg-slate-700">
                       <FileText className="mb-4 h-24 w-24 text-slate-500" />

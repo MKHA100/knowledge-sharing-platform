@@ -73,14 +73,10 @@ export async function POST(
   const document = rpcResult || docData;
 
   // Get a suggested query to show the downloader
-  const { data: suggestion, error: suggestionError } = await supabase
+  const { data: suggestion } = await supabase
     .rpc("get_suggested_query", {
       exclude_subject: document?.subject || null,
     });
-  
-  if (suggestionError) {
-    console.log("[Download API] Suggestion RPC error:", suggestionError);
-  }
 
   // Check if uploader should get notification (milestone: 10, 50, 100, etc.)
   const milestones = [10, 25, 50, 100, 250, 500, 1000];
@@ -104,7 +100,7 @@ export async function POST(
         type: "download_milestone",
         title: "🎉 Milestone Reached!",
         message: `Your "${docData.title}" just hit ${downloadCount} downloads! You're helping so many students!`,
-        link: `/doc/${docData.id}`,
+        action_url: `/doc/${docData.id}`,
       });
     }
   }
@@ -132,16 +128,11 @@ export async function POST(
       }
     }
     
-    console.log("[Download API] Generating presigned URL for key:", key);
-    
     try {
       downloadUrl = await getPresignedDownloadUrl(key, 3600, `${docData.title}.pdf`);
-      console.log("[Download API] Presigned URL generated successfully");
     } catch (error) {
       console.error("[Download API] Error generating presigned URL:", error);
     }
-  } else {
-    console.log("[Download API] Using public URL directly:", downloadUrl);
   }
 
   return NextResponse.json<

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { api } from "@/lib/api/client";
 import type { DocumentWithUploader } from "@/types";
@@ -43,8 +43,23 @@ const navItems: NavItem[] = [
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("overview");
+  const searchParams = useSearchParams();
+  const sectionParam = searchParams.get("section") || "overview";
+  const [activeSection, setActiveSection] = useState(sectionParam);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Sync section with URL
+  useEffect(() => {
+    setActiveSection(sectionParam);
+  }, [sectionParam]);
+
+  // Handle section change with URL update
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", section);
+    router.push(url.pathname + url.search, { scroll: false });
+  };
 
   // Admin access state
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -114,13 +129,6 @@ export default function AdminDashboard() {
             api.documents.list({}), // Fetch all documents without limit
           ]);
 
-        console.log("API Responses:", {
-          pending: pendingRes,
-          downvoted: downvotedRes,
-          users: usersRes,
-          documents: documentsRes,
-        });
-
         if (pendingRes.success && pendingRes.data) {
           setApiPending(pendingRes.data);
         }
@@ -130,11 +138,9 @@ export default function AdminDashboard() {
         if (usersRes.success && usersRes.data) {
           setApiUsers(usersRes.data.users || []);
         }
-        // FIX: Extract items from paginated response
+        // Extract items from paginated response
         if (documentsRes.success && documentsRes.data) {
-          console.log("Documents Response Data:", documentsRes.data);
           const documents = documentsRes.data.items || documentsRes.data || [];
-          console.log("Extracted documents:", documents, "Length:", documents.length);
           setApiDocuments(Array.isArray(documents) ? documents : []);
         } else {
           console.error("Documents fetch failed:", documentsRes);
@@ -292,13 +298,54 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSendComplement = async (userId: string, documentId: string, message: string) => {
+  const handleUploadCompiled = async (id: string, formData: FormData) => {
+    try {
+      const response = await fetch(`/api/admin/pending-images/${id}/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success("Document published successfully! The user has been notified.");
+        setPendingImages((prev) => prev.filter((batch) => batch.id !== id));
+      } else {
+        toast.error(result.error || "Failed to upload document");
+      }
+    } catch (error) {
+      console.error("Error uploading compiled document:", error);
+      toast.error("Failed to upload document");
+    }
+  };
+
+  const handleRefreshPendingImages = async () => {
+    try {
+      const response = await fetch("/api/admin/pending-images");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setPendingImages(data.data || []);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing pending images:", error);
+    }
+  };
+
+  // Handler for sending compliments to users
+  const handleSendComplement = async (
+    userId: string, 
+    documentId: string, 
+    message: string,
+    happinessLevel: "helpful" | "very_helpful" | "life_saver" = "very_helpful"
+  ) => {
     try {
       const result = await api.admin.complement({
         documentId,
         userId,
         senderDisplayName: "Admin",
-        happinessLevel: "very_helpful",
+        happinessLevel,
         message,
       });
 
@@ -387,7 +434,8 @@ export default function AdminDashboard() {
             batches={pendingImages}
             onDownload={handleDownloadImages}
             onDelete={handleDeleteImages}
-            onMarkProcessed={handleMarkProcessed}
+            onUploadCompiled={handleUploadCompiled}
+            onRefresh={handleRefreshPendingImages}
           />
         );
       case "documents":
@@ -435,7 +483,7 @@ export default function AdminDashboard() {
         <AdminSidebar
           navItems={navItems}
           activeSection={activeSection}
-          onSectionChange={setActiveSection}
+          onSectionChange={handleSectionChange}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
           badgeCounts={badgeCounts}

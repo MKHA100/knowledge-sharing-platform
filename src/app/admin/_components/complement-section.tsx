@@ -1,17 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Sparkles, Send, ChevronRight } from "lucide-react";
+import { Check, Sparkles, Send, ChevronRight, Smile, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { AdminUser, Document } from "./types";
+
+// Happiness level type matching the database enum
+type HappinessLevel = "helpful" | "very_helpful" | "life_saver";
 
 interface ComplementSectionProps {
   users: AdminUser[];
   documents: Document[];
-  onSendComplement?: (userId: string, documentId: string, message: string) => Promise<void>;
+  onSendComplement?: (userId: string, documentId: string, message: string, happinessLevel: HappinessLevel) => Promise<void>;
 }
 
 export function ComplementSection({
@@ -22,6 +26,7 @@ export function ComplementSection({
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [complementMessage, setComplementMessage] = useState("");
+  const [happinessLevel, setHappinessLevel] = useState<HappinessLevel>("very_helpful");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -36,7 +41,7 @@ export function ComplementSection({
     setSending(true);
     try {
       if (onSendComplement) {
-        await onSendComplement(selectedUser.id, selectedDocument.id, complementMessage);
+        await onSendComplement(selectedUser.id, selectedDocument.id, complementMessage, happinessLevel);
       }
       setSent(true);
     } catch (error) {
@@ -50,8 +55,16 @@ export function ComplementSection({
     setSelectedUser(null);
     setSelectedDocument(null);
     setComplementMessage("");
+    setHappinessLevel("very_helpful");
     setSent(false);
   };
+
+  // Happiness level options with labels and icons
+  const happinessOptions: { value: HappinessLevel; label: string; emoji: string; description: string }[] = [
+    { value: "helpful", label: "Helpful", emoji: "😊", description: "Good contribution" },
+    { value: "very_helpful", label: "Very Helpful", emoji: "😃", description: "Great work!" },
+    { value: "life_saver", label: "Life Saver", emoji: "🤩", description: "Outstanding!" },
+  ];
 
   // Success state
   if (sent) {
@@ -260,6 +273,35 @@ export function ComplementSection({
                   For: {selectedDocument.title}
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Happiness Level Selector */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-600">How impactful was this contribution?</p>
+            <div className="grid grid-cols-3 gap-3">
+              {happinessOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setHappinessLevel(option.value)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all",
+                    happinessLevel === option.value
+                      ? "border-blue-500 bg-blue-50 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  )}
+                >
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className={cn(
+                    "text-sm font-medium",
+                    happinessLevel === option.value ? "text-blue-700" : "text-slate-700"
+                  )}>
+                    {option.label}
+                  </span>
+                  <span className="text-xs text-slate-500">{option.description}</span>
+                </button>
+              ))}
             </div>
           </div>
 

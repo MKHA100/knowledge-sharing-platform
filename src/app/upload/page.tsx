@@ -30,8 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AppProvider } from "@/lib/app-context";
-import { ToastProvider } from "@/components/toast-provider";
 import { LoginModal } from "@/components/login-modal";
 import { storeFilesForUpload } from "@/lib/utils/file-storage";
 import { toast } from "sonner";
@@ -72,8 +70,9 @@ function UploadContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const prefilledCategory = searchParams.get("category");
+  const typeParam = searchParams.get("type");
 
-  const [selectedType, setSelectedType] = React.useState<string | null>(null);
+  const [selectedType, setSelectedType] = React.useState<string | null>(typeParam);
   const [files, setFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [uploadState, setUploadState] = React.useState<
@@ -86,6 +85,19 @@ function UploadContent() {
   const [checkingStatus, setCheckingStatus] = React.useState(true);
 
   // Check if uploads are enabled on mount
+  // Sync selectedType with URL param
+  React.useEffect(() => {
+    if (typeParam) {
+      const validType = documentTypes.find(t => t.id === typeParam);
+      if (validType) {
+        setSelectedType(typeParam);
+      }
+    } else {
+      // Clear selectedType when type param is removed (e.g., back button)
+      setSelectedType(null);
+    }
+  }, [typeParam]);
+
   React.useEffect(() => {
     const checkUploadStatus = async () => {
       try {
@@ -462,7 +474,13 @@ function UploadContent() {
                 <button
                   key={type.id}
                   type="button"
-                  onClick={() => setSelectedType(type.id)}
+                  onClick={() => {
+                    setSelectedType(type.id);
+                    // Update URL with type parameter
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("type", type.id);
+                    router.push(url.pathname + url.search, { scroll: false });
+                  }}
                   className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-8 text-center transition-all hover:border-blue-400 hover:shadow-lg hover:shadow-blue-100"
                 >
                   <div
@@ -503,7 +521,13 @@ function UploadContent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedType(null)}
+                onClick={() => {
+                  setSelectedType(null);
+                  // Remove type parameter from URL
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("type");
+                  router.push(url.pathname + url.search, { scroll: false });
+                }}
                 className="text-slate-500 hover:text-slate-700"
               >
                 Change Type
@@ -658,20 +682,22 @@ function UploadContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Image Upload Confirmation</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                You have selected <strong>{imageFiles.length} image file(s)</strong>
-                {pdfFiles.length + wordFiles.length > 0 && (
-                  <> and <strong>{pdfFiles.length + wordFiles.length} document file(s)</strong></>
-                )}.
-              </p>
-              <p>
-                Images will be sent to our admin team for review and compilation into a 
-                professional document. This process typically takes 24-48 hours.
-              </p>
-              <p className="text-sm font-medium">
-                Would you like to proceed with sending these images to the admin team?
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You have selected <strong>{imageFiles.length} image file(s)</strong>
+                  {pdfFiles.length + wordFiles.length > 0 && (
+                    <> and <strong>{pdfFiles.length + wordFiles.length} document file(s)</strong></>
+                  )}.
+                </p>
+                <p>
+                  Images will be sent to our admin team for review and compilation into a 
+                  professional document. This process typically takes 24-48 hours.
+                </p>
+                <p className="text-sm font-medium">
+                  Would you like to proceed with sending these images to the admin team?
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -697,11 +723,8 @@ function Loading() {
 
 export default function UploadPage() {
   return (
-    <AppProvider>
-      <ToastProvider />
-      <Suspense fallback={<Loading />}>
-        <UploadContent />
-      </Suspense>
-    </AppProvider>
+    <Suspense fallback={<Loading />}>
+      <UploadContent />
+    </Suspense>
   );
 }

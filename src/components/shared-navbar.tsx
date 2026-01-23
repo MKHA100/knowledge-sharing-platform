@@ -93,11 +93,11 @@ export function SharedNavbar({
           {/* Center - Search Bar (Browse variant) or Nav Links */}
           {variant === "browse" ? (
             <div className="relative flex-1 max-w-2xl">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-700" />
               <Input
                 type="search"
                 placeholder="Search documents..."
-                className="h-10 w-full rounded-xl border-slate-200 bg-slate-50 pl-11 text-sm placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400"
+                className="h-10 w-full rounded-xl border-slate-700 bg-slate-50 pl-11 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-400 focus:ring-blue-400"
                 value={searchQuery}
                 onChange={(e) => onSearchChange?.(e.target.value)}
               />
@@ -135,14 +135,16 @@ export function SharedNavbar({
                     className="flex h-10 w-10 items-center justify-center rounded-full transition-all hover:ring-2 hover:ring-blue-400 hover:ring-offset-2 focus:outline-none"
                   >
                     <Avatar className="h-10 w-10 border-2 border-white shadow-md">
-                      <AvatarImage 
-                        src={user?.imageUrl || undefined} 
-                        alt={user?.fullName || user?.username || 'User'} 
+                      <AvatarImage
+                        src={user?.imageUrl || undefined}
+                        alt={user?.fullName || user?.username || "User"}
                       />
                       <AvatarFallback className="bg-blue-500 text-white text-sm font-semibold">
-                        {user?.firstName?.charAt(0)?.toUpperCase() || 
-                         user?.emailAddresses?.[0]?.emailAddress?.charAt(0)?.toUpperCase() || 
-                         'U'}
+                        {user?.firstName?.charAt(0)?.toUpperCase() ||
+                          user?.emailAddresses?.[0]?.emailAddress
+                            ?.charAt(0)
+                            ?.toUpperCase() ||
+                          "U"}
                       </AvatarFallback>
                     </Avatar>
                   </button>
