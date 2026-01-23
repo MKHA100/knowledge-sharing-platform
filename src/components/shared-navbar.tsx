@@ -30,6 +30,7 @@ interface SharedNavbarProps {
   backLabel?: string;
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
+  onBackClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 export function SharedNavbar({
@@ -38,6 +39,7 @@ export function SharedNavbar({
   backLabel = "Back",
   searchQuery = "",
   onSearchChange,
+  onBackClick,
 }: SharedNavbarProps) {
   const { isLoggedIn, setShowLoginModal } = useApp();
   const { user } = useUser();
@@ -77,6 +79,7 @@ export function SharedNavbar({
             {variant === "back" && (
               <Link
                 href={backHref}
+                onClick={onBackClick}
                 className="flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-slate-900"
               ></Link>
             )}

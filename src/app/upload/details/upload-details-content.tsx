@@ -9,6 +9,8 @@ import {
   Loader2,
   CheckCircle,
   Sparkles,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { SharedNavbar } from "@/components/shared-navbar";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { SUBJECTS, getSubjectDisplayName } from "@/lib/constants/subjects";
@@ -138,6 +150,67 @@ export function UploadDetailsContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(true);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  // Handle beforeunload to warn user about leaving
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (files.length > 0 && !uploadSuccess) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved documents. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [files.length, uploadSuccess]);
+
+  // Remove a file from the list
+  const removeFile = (fileId: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    // If no files left, redirect back
+    if (files.length <= 1) {
+      clearStoredFiles();
+      router.push("/upload");
+    }
+  };
+
+  // Open file in new tab for preview
+  const viewFile = (file: FileData) => {
+    try {
+      const byteCharacters = atob(file.fileBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: file.fileType });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      toast.error("Failed to open file preview");
+    }
+  };
+
+  // Handle navigation with confirmation
+  const handleNavigateAway = (href: string) => {
+    if (files.length > 0 && !uploadSuccess) {
+      setPendingNavigation(href);
+      setShowLeaveConfirm(true);
+    } else {
+      router.push(href);
+    }
+  };
+
+  const confirmLeave = () => {
+    clearStoredFiles();
+    setShowLeaveConfirm(false);
+    if (pendingNavigation) {
+      router.push(pendingNavigation);
+    }
+  };
 
   // Load files from IndexedDB and start progressive AI categorization
   useEffect(() => {
@@ -354,6 +427,18 @@ export function UploadDetailsContent() {
           body: formData,
         });
 
+        // Check if response is ok first
+        if (!response.ok) {
+          const text = await response.text();
+          // Try to parse as JSON, otherwise use the text
+          try {
+            const errorJson = JSON.parse(text);
+            throw new Error(errorJson.error || `Upload failed with status ${response.status}`);
+          } catch {
+            throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+          }
+        }
+
         const result = await response.json();
         if (!result.success) {
           throw new Error(result.error || "Upload failed");
@@ -441,7 +526,29 @@ export function UploadDetailsContent() {
         variant="back"
         backHref="/upload"
         backLabel="Back to Upload"
+        onBackClick={(e) => {
+          e.preventDefault();
+          handleNavigateAway("/upload");
+        }}
       />
+
+      {/* Leave Confirmation Dialog */}
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this page?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your documents have not been uploaded yet. If you leave now, all your files and entered details will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay on page</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLeave} className="bg-red-500 hover:bg-red-600">
+              Leave anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Spacer */}
       <div className="h-24" />
@@ -467,13 +574,36 @@ export function UploadDetailsContent() {
             >
               <div className="flex gap-6">
                 {/* Left - Document Preview */}
-                <div className="flex shrink-0 items-start">
+                <div className="flex shrink-0 flex-col items-center gap-2">
                   <div className="flex h-32 w-32 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm">
                     {file.isProcessing ? (
                       <Loader2 className="h-10 w-10 animate-spin text-blue-400" />
                     ) : (
                       <FileText className="h-12 w-12 text-blue-400" />
                     )}
+                  </div>
+                  {/* View and Remove buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => viewFile(file)}
+                      className="h-8 gap-1 text-xs"
+                      title="View document"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeFile(file.id)}
+                      className="h-8 gap-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                      title="Remove document"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Remove
+                    </Button>
                   </div>
                 </div>
 
@@ -632,10 +762,16 @@ export function UploadDetailsContent() {
                               updateFile(file.id, "subject", value)
                             }
                           >
-                            <SelectTrigger className="h-11 rounded-lg border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-500 focus:ring-blue-500 [&>span]:text-slate-900">
+                            <SelectTrigger className="h-11 w-full rounded-lg border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-500 focus:ring-blue-500 [&>span]:text-slate-900">
                               <SelectValue placeholder="Search & select subject" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl bg-white border-slate-200 shadow-lg">
+                            <SelectContent 
+                              className="rounded-xl bg-white border-slate-200 shadow-lg w-[var(--radix-select-trigger-width)]"
+                              position="popper"
+                              side="bottom"
+                              align="start"
+                              sideOffset={4}
+                            >
                               <div className="sticky top-0 border-b border-slate-200 bg-white p-2 z-10">
                                 <div className="relative">
                                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
