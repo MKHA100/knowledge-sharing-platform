@@ -8,9 +8,12 @@ import {
   Check,
   ThumbsUp,
   ThumbsDown,
+  ImagePlus,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import type { DocumentWithUploader } from "@/types";
 import type { AdminStats, DownvotedDocument, StatCard } from "./types";
 
@@ -27,6 +30,44 @@ export function OverviewSection({
   downvoted,
   onNavigate,
 }: OverviewSectionProps) {
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<{
+    processed: number;
+    failed: number;
+    total: number;
+  } | null>(null);
+
+  const handleBackfillThumbnails = async () => {
+    setIsBackfilling(true);
+    setBackfillResult(null);
+
+    try {
+      const response = await fetch("/api/admin/backfill-thumbnails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          batchSize: 10,
+          limit: 100,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setBackfillResult(data.data);
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Backfill error:", error);
+      alert("Failed to backfill thumbnails. Please try again.");
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
   const statCards: StatCard[] = [
     {
       label: "Total Documents",
@@ -190,6 +231,58 @@ export function OverviewSection({
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Thumbnail Backfill Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="mb-2 font-semibold text-slate-900">
+              Generate Thumbnails
+            </h2>
+            <p className="text-sm text-slate-500">
+              Generate thumbnail images for documents that don&apos;t have them yet
+            </p>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <ImagePlus className="h-6 w-6" />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          {backfillResult ? (
+            <div className="rounded-xl bg-emerald-50 p-4">
+              <p className="mb-2 font-medium text-emerald-900">
+                Backfill Complete!
+              </p>
+              <div className="space-y-1 text-sm text-emerald-700">
+                <p>✓ Processed: {backfillResult.processed} documents</p>
+                {backfillResult.failed > 0 && (
+                  <p>✗ Failed: {backfillResult.failed} documents</p>
+                )}
+                <p>Total: {backfillResult.total} documents</p>
+              </div>
+            </div>
+          ) : (
+            <Button
+              onClick={handleBackfillThumbnails}
+              disabled={isBackfilling}
+              className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-700"
+            >
+              {isBackfilling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Thumbnails...
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  Backfill Thumbnails
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

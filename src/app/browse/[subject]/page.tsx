@@ -5,9 +5,17 @@ import { BrowseClientContent, BrowseLoadingSkeleton } from "../_components/brows
 import { 
   slugToSubjectId, 
   getAllSubjectSlugs,
-  isValidSubjectSlug 
+  isValidSubjectSlug,
+  subjectIdToSlug
 } from "@/lib/utils/url-params";
 import { getSubjectDisplayName } from "@/lib/constants/subjects";
+import {
+  JsonLd,
+  generateSubjectSchema,
+  generateBreadcrumbSchema,
+} from "@/components/structured-data";
+
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.lk";
 
 interface SubjectPageProps {
   params: Promise<{ subject: string }>;
@@ -75,10 +83,27 @@ export default async function SubjectBrowsePage({ params }: SubjectPageProps) {
   if (!subjectId) {
     notFound();
   }
+
+  const displayName = getSubjectDisplayName(subjectId);
+  const description = `Download free ${displayName} O-Level past papers, short notes, and textbooks for Sri Lankan students. Available in Sinhala, English, and Tamil.`;
+  
+  // Generate structured data for SEO
+  const subjectSchema = generateSubjectSchema(baseUrl, displayName, slug, description);
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: baseUrl },
+    { name: "Browse", url: `${baseUrl}/browse` },
+    { name: displayName, url: `${baseUrl}/browse/${slug}` },
+  ]);
   
   return (
-    <Suspense fallback={<BrowseLoadingSkeleton />}>
-      <BrowseClientContent subjectId={subjectId} />
-    </Suspense>
+    <>
+      {/* Structured Data */}
+      <JsonLd data={subjectSchema} />
+      <JsonLd data={breadcrumbSchema} />
+      
+      <Suspense fallback={<BrowseLoadingSkeleton />}>
+        <BrowseClientContent subjectId={subjectId} />
+      </Suspense>
+    </>
   );
 }

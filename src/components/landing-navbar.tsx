@@ -148,7 +148,7 @@ export function LandingNavbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="glass mt-2 rounded-2xl p-4 md:hidden">
+          <div className="g-gradient-to-r from-blue-50/95 to-cyan-50/95 backdrop-blur-md border border-blue-200/30 shadow-xl mt-2 rounded-2xl p-4 md:hidden">
             <div className="flex flex-col gap-1">
               <Link
                 href="/browse"

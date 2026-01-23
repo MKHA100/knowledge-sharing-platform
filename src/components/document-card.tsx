@@ -6,7 +6,6 @@ import { useState, useEffect } from "react";
 import {
   Heart,
   Download,
-  FileText,
   ThumbsUp,
   Eye,
 } from "lucide-react";
@@ -17,6 +16,89 @@ import { toast } from "sonner";
 import { api } from "@/lib/api/client";
 import { getSubjectDisplayName } from "@/lib/constants/subjects";
 import type { DocumentWithUploader } from "@/types";
+
+/**
+ * DocumentPreview Component
+ * Ensures a visual preview ALWAYS appears - never shows just an icon.
+ * Priority: 1) Thumbnail image 2) PDF embed 3) PDF object tag 4) Image from PDF URL
+ */
+function DocumentPreview({ document }: { document: DocumentWithUploader }) {
+  const [imageError, setImageError] = useState(false);
+  const [embedError, setEmbedError] = useState(false);
+
+  // Get the best available preview URL
+  const thumbnailUrl = document.thumbnail_url;
+  const pdfUrl = document.file_path;
+
+  // Priority 1: Thumbnail image (best performance)
+  if (thumbnailUrl && !imageError) {
+    return (
+      <img
+        src={thumbnailUrl}
+        alt={document.title}
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setImageError(true)}
+      />
+    );
+  }
+
+  // Priority 2: Try to render PDF directly
+  if (pdfUrl) {
+    // If embed failed, try showing PDF as background image via Google Docs viewer
+    if (embedError) {
+      return (
+        <iframe
+          src={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`}
+          className="absolute inset-0 h-full w-full border-0 pointer-events-none"
+          title={document.title}
+          loading="lazy"
+        />
+      );
+    }
+
+    return (
+      <>
+        {/* PDF embed - works on most browsers */}
+        <embed
+          src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+          type="application/pdf"
+          className="absolute inset-0 h-full w-full pointer-events-none"
+          title={document.title}
+          onError={() => setEmbedError(true)}
+        />
+        {/* Object tag fallback */}
+        <object
+          data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+          type="application/pdf"
+          className="absolute inset-0 h-full w-full pointer-events-none"
+          title={document.title}
+          onError={() => setEmbedError(true)}
+        >
+          {/* If object fails, use Google Docs viewer as ultimate fallback */}
+          <iframe
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`}
+            className="absolute inset-0 h-full w-full border-0 pointer-events-none"
+            title={document.title}
+            loading="lazy"
+          />
+        </object>
+      </>
+    );
+  }
+
+  // Priority 3: Show styled placeholder with document info (last resort)
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-100 via-indigo-50 to-purple-100">
+      <div className="w-16 h-20 bg-white rounded-lg shadow-md flex items-center justify-center mb-3">
+        <span className="text-3xl font-bold text-indigo-400">PDF</span>
+      </div>
+      <p className="text-sm font-medium text-slate-700 text-center line-clamp-2 px-2">
+        {document.title}
+      </p>
+    </div>
+  );
+}
 
 interface DocumentCardProps {
   document: DocumentWithUploader;
@@ -99,27 +181,9 @@ export function DocumentCard({ document, onDocumentClick }: DocumentCardProps) {
       onClick={handleClick}
     >
       {/* Document Preview Area */}
-      <div className="relative aspect-[4/3] overflow-hidden">
-        {/* Background with PDF preview or fallback gradient */}
-        {document.file_path ? (
-          <div className="absolute inset-0 bg-slate-100">
-            {/* PDF First Page Preview using embed */}
-            <iframe
-              src={`${document.file_path}#page=1&view=FitH&toolbar=0&navpanes=0`}
-              className="h-full w-full pointer-events-none"
-              title={document.title}
-              loading="lazy"
-            />
-            {/* Overlay to make it look like an image */}
-            <div className="absolute inset-0 bg-transparent" />
-          </div>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200">
-            <div className="flex h-full w-full items-center justify-center">
-              <FileText className="h-20 w-20 text-slate-300" />
-            </div>
-          </div>
-        )}
+      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
+        {/* Always show a preview - thumbnail takes priority, PDF embed as fallback */}
+        <DocumentPreview document={document} />
 
         {/* Hover Overlay */}
         <div

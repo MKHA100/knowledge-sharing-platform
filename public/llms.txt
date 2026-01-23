@@ -1,0 +1,76 @@
+# StudyShare
+
+> Free O-Level study materials for Sri Lankan students
+
+StudyShare is a platform where students share and download study materials for the Sri Lankan O-Level curriculum. Materials are available in Sinhala, English, and Tamil.
+
+## What We Offer
+
+- **Past Papers**: Official and model O-Level examination papers
+- **Short Notes**: Concise study notes created by students and teachers
+- **Textbooks**: Educational books and reference materials
+- **Free Access**: All materials are free to download
+
+## Subjects
+
+We cover all 52 O-Level subjects including:
+
+### Core Subjects
+- Mathematics
+- Science
+- English
+- Sinhala Language & Literature
+- Tamil Language & Literature
+- History
+
+### Religion
+- Buddhism
+- Christianity
+- Islam
+- Catholicism
+- Hinduism (Saivanery)
+
+### Category I (Commerce & Languages)
+- Business & Accounting Studies
+- Geography
+- Civic Education
+- Entrepreneurship Studies
+- Second Languages (Sinhala, Tamil)
+- Foreign Languages (French, German, Japanese, Korean, Arabic, Hindi)
+
+### Category II (Arts & Technical)
+- Art
+- Music
+- Drama & Theatre
+- Dancing
+- Home Economics
+- Health & Physical Education
+
+### Category III (Technology & Science)
+- Information & Communication Technology
+- Agriculture & Food Technology
+- Aquatic Bioresources Technology
+- Design & Construction Technology
+- Design & Mechanical Technology
+- Design, Electrical & Electronic Technology
+
+## Languages Available
+
+Materials are available in three mediums:
+- Sinhala (සිංහල)
+- English
+- Tamil (தமிழ்)
+
+## Key Pages
+
+- Homepage: https://studyshare.lk
+- Browse Materials: https://studyshare.lk/browse
+- FAQ: https://studyshare.lk/faq
+
+## For Detailed Information
+
+See our extended documentation: https://studyshare.lk/llms-full.txt
+
+## Contact
+
+For questions about StudyShare, visit our website or use the feedback form on our homepage.

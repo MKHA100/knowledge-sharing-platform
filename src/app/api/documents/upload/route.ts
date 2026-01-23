@@ -5,6 +5,7 @@ import { uploadToR2 } from "@/lib/r2/client";
 import { uploadDocumentSchema } from "@/lib/validations/schemas";
 import { isValidFileType, getMimeType } from "@/lib/utils";
 import { convertToPdf, isImageFile } from "@/lib/utils/pdf-converter";
+import { generatePDFThumbnail } from "@/lib/utils/thumbnail-generator";
 import type { ApiResponse, Document } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -105,6 +106,23 @@ export async function POST(request: NextRequest) {
           "documents",
         );
 
+        // Generate thumbnail from the PDF
+        let thumbnailUrl: string | null = null;
+        try {
+          const thumbnailBuffer = await generatePDFThumbnail(pdfBuffer, 600, 85);
+          const thumbnailFileName = `${file.name.replace(/\.[^/.]+$/, "")}_thumb.jpg`;
+          const thumbnailUpload = await uploadToR2(
+            thumbnailBuffer,
+            thumbnailFileName,
+            "image/jpeg",
+            "thumbnails",
+          );
+          thumbnailUrl = thumbnailUpload.url;
+        } catch (thumbnailError) {
+          console.error(`Failed to generate thumbnail for ${file.name}:`, thumbnailError);
+          // Continue without thumbnail - not a critical failure
+        }
+
         // User has verified the details, so auto-approve
         // Only image uploads (handled separately) go to admin
         const status = "approved";
@@ -115,6 +133,7 @@ export async function POST(request: NextRequest) {
           uploader_id: user.id,
           file_path: uploaded.url,
           file_size: uploaded.size,
+          thumbnail_url: thumbnailUrl,
           type: documentType,
           subject: subject,
           medium: medium,

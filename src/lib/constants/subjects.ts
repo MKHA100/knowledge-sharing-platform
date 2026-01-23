@@ -267,6 +267,83 @@ export function findSubjectIdFromQuery(query: string): string | null {
   return matchedSubject?.id || null;
 }
 
+/**
+ * Find ALL subject IDs that match a query (including partial/related matches)
+ * This is the key function for comprehensive search
+ * 
+ * Examples:
+ * - "literature" → ["english_literary_texts", "sinhala_literary_texts", "tamil_literary_texts", "arabic_literary_texts"]
+ * - "english" → ["english", "english_literary_texts"]
+ * - "music" → ["music_oriental", "music_western", "music_carnatic"]
+ * - "design" → ["design_construction", "design_mechanical", "design_electrical_electronic"]
+ */
+export function findMatchingSubjectIds(query: string): string[] {
+  const normalizedQuery = query.toLowerCase().trim();
+  const matchingIds: Set<string> = new Set();
+
+  // Special case mappings for common search patterns
+  const specialMappings: Record<string, string[]> = {
+    "literature": ["english_literary_texts", "sinhala_literary_texts", "tamil_literary_texts", "arabic_literary_texts"],
+    "literary": ["english_literary_texts", "sinhala_literary_texts", "tamil_literary_texts", "arabic_literary_texts"],
+    "lit": ["english_literary_texts", "sinhala_literary_texts", "tamil_literary_texts", "arabic_literary_texts"],
+    "music": ["music_oriental", "music_western", "music_carnatic"],
+    "dancing": ["dancing_oriental", "dancing_bharata"],
+    "dance": ["dancing_oriental", "dancing_bharata"],
+    "design": ["design_construction", "design_mechanical", "design_electrical_electronic"],
+    "technology": ["ict", "agriculture_food_technology", "design_construction", "design_mechanical", "design_electrical_electronic"],
+    "tech": ["ict", "agriculture_food_technology", "design_construction", "design_mechanical", "design_electrical_electronic"],
+    "language": ["english", "sinhala_language_literature", "tamil_language_literature", "second_language_sinhala", "second_language_tamil"],
+    "religion": ["buddhism", "catholicism", "saivanery", "christianity", "islam"],
+    "religious": ["buddhism", "catholicism", "saivanery", "christianity", "islam"],
+  };
+
+  // Check special mappings first
+  if (specialMappings[normalizedQuery]) {
+    specialMappings[normalizedQuery].forEach(id => matchingIds.add(id));
+  }
+
+  // Check each subject for matches
+  SUBJECTS.forEach((subject) => {
+    const displayLower = subject.displayName.toLowerCase();
+    const idLower = subject.id.toLowerCase();
+
+    // Exact matches
+    if (
+      displayLower === normalizedQuery ||
+      idLower === normalizedQuery ||
+      subject.searchTerms.some(term => term.toLowerCase() === normalizedQuery)
+    ) {
+      matchingIds.add(subject.id);
+    }
+
+    // Partial matches - query contained in display name, id, or search terms
+    if (
+      displayLower.includes(normalizedQuery) ||
+      idLower.includes(normalizedQuery) ||
+      subject.searchTerms.some(term => term.toLowerCase().includes(normalizedQuery))
+    ) {
+      matchingIds.add(subject.id);
+    }
+
+    // Reverse partial - display name or search term contained in query
+    // e.g., query "english literature notes" should match "english" and "english_literary_texts"
+    const queryWords = normalizedQuery.split(/\s+/);
+    queryWords.forEach(word => {
+      if (word.length >= 3) { // Only match words with 3+ chars
+        if (
+          displayLower.includes(word) ||
+          idLower.includes(word) ||
+          subject.searchTerms.some(term => term.toLowerCase().includes(word))
+        ) {
+          matchingIds.add(subject.id);
+        }
+      }
+    });
+  });
+
+  return Array.from(matchingIds);
+}
+
 // Find all literature subject IDs - used for "literature" search
 export function findLiteratureSubjectIds(): string[] {
   return SUBJECTS.filter(

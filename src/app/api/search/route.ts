@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSchema } from "@/lib/validations/schemas";
-import { findSubjectIdFromQuery } from "@/lib/constants/subjects";
+import { findSubjectIdFromQuery, findMatchingSubjectIds } from "@/lib/constants/subjects";
 import type { ApiResponse, SearchResult, PaginatedResponse } from "@/types";
 
+/**
+ * Search API - Uses the same smart search algorithm as documents API
+ * Returns lightweight search results for autocomplete/suggestions
+ */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
 
@@ -32,74 +36,48 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Check if query matches a subject name
-  const matchedSubjectId = query ? findSubjectIdFromQuery(query) : null;
+  // Smart search with subject matching
+  const normalizedQuery = query?.toLowerCase().trim() || "";
+  const matchingSubjectIds = normalizedQuery ? findMatchingSubjectIds(normalizedQuery) : [];
+  const exactSubjectMatch = normalizedQuery ? findSubjectIdFromQuery(normalizedQuery) : null;
 
-  // Try RPC search first with correct parameter names
-  let data: any[] | null = null;
-  let rpcError: any = null;
+  // Build query
+  let queryBuilder = supabase
+    .from("documents")
+    .select(
+      "id, title, subject, medium, type, upvotes, downvotes, views, downloads, created_at",
+    )
+    .eq("status", "approved");
 
-  try {
-    const result = await supabase.rpc("search_documents", {
-      search_query: query || "",
-      filter_subject: subject || null,
-      filter_medium: medium || null,
-      filter_type: documentType || null,
-      page_limit: limit,
-      page_offset: offset,
+  // Apply filters
+  if (subject) queryBuilder = queryBuilder.eq("subject", subject);
+  if (medium) queryBuilder = queryBuilder.eq("medium", medium);
+  if (documentType) queryBuilder = queryBuilder.eq("type", documentType);
+
+  // Build OR conditions for search
+  if (query) {
+    const orConditions: string[] = [];
+    
+    // Title search
+    orConditions.push(`title.ilike.%${query}%`);
+    
+    // Subject matching
+    matchingSubjectIds.forEach(subjectId => {
+      orConditions.push(`subject.eq.${subjectId}`);
     });
-
-    data = result.data;
-    rpcError = result.error;
-  } catch (err) {
-    console.error("RPC search_documents failed:", err);
-    rpcError = err;
+    
+    queryBuilder = queryBuilder.or(orConditions.join(","));
   }
 
-  // Fallback to query builder if RPC fails
-  if (rpcError) {
-    let queryBuilder = supabase
-      .from("documents")
-      .select(
-        "id, title, subject, medium, type, upvotes, downvotes, views, downloads, created_at",
-      )
-      .eq("status", "approved");
+  const { data, error } = await queryBuilder
+    .order("downloads", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (query) {
-      // Search in title
-      queryBuilder = queryBuilder.ilike("title", `%${query}%`);
-    }
-
-    // If the query matches a subject, also include documents of that subject
-    if (matchedSubjectId && !subject) {
-      // This would need OR logic, so we'll just filter by subject if matched
-      queryBuilder = supabase
-        .from("documents")
-        .select(
-          "id, title, subject, medium, type, upvotes, downvotes, views, downloads, created_at",
-        )
-        .eq("status", "approved")
-        .or(`title.ilike.%${query}%,subject.eq.${matchedSubjectId}`);
-    }
-
-    if (subject) queryBuilder = queryBuilder.eq("subject", subject);
-    if (medium) queryBuilder = queryBuilder.eq("medium", medium);
-    if (documentType) queryBuilder = queryBuilder.eq("type", documentType);
-
-    queryBuilder = queryBuilder
-      .order("downloads", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    const fallbackResult = await queryBuilder;
-
-    if (fallbackResult.error) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: fallbackResult.error.message },
-        { status: 500 },
-      );
-    }
-
-    data = fallbackResult.data;
+  if (error) {
+    return NextResponse.json<ApiResponse<null>>(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 
   // If no results and there was a query, log as failed search
@@ -129,22 +107,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Check for spell suggestions if no/few results
-  let suggestion: string | null = null;
-  if (query && (!data || data.length < 3)) {
-    const { data: similarDocs } = await supabase
-      .from("documents")
-      .select("title")
-      .eq("status", "approved")
-      .limit(1)
-      .order("title");
-
-    // Simple suggestion logic - could be enhanced
-    if (similarDocs && similarDocs.length > 0) {
-      // This is placeholder - real implementation would use pg_trgm similarity
-    }
-  }
-
   return NextResponse.json<
     ApiResponse<PaginatedResponse<SearchResult> & { suggestion?: string }>
   >({
@@ -155,7 +117,6 @@ export async function GET(request: NextRequest) {
       page: Math.floor(offset / limit) + 1,
       limit,
       hasMore: (data?.length || 0) === limit,
-      suggestion: suggestion || undefined,
     },
   });
 }

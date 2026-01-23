@@ -227,7 +227,8 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
               <Link
-                href={createBrowseURL({ type, lang, sort, search: searchQuery || null })}
+                href={createBrowseURL({ type, lang, sort, search: null })}
+                onClick={() => setSearchQuery("")}
                 className={cn(
                   "rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap",
                   !subjectId
@@ -245,8 +246,9 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
                     type, 
                     lang, 
                     sort, 
-                    search: searchQuery || null 
+                    search: null
                   })}
+                  onClick={() => setSearchQuery("")}
                   className={cn(
                     "rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap",
                     subjectId === subject.id

@@ -504,7 +504,7 @@ export function UploadDetailsContent() {
                   {/* Skeleton loading for form fields */}
                   {file.isProcessing ? (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Skeleton className="mb-2 h-4 w-24" />
                           <Skeleton className="h-10 w-full rounded-lg" />
@@ -514,7 +514,7 @@ export function UploadDetailsContent() {
                           <Skeleton className="h-10 w-full rounded-lg" />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Skeleton className="mb-2 h-4 w-16" />
                           <Skeleton className="h-10 w-full rounded-lg" />
@@ -548,7 +548,7 @@ export function UploadDetailsContent() {
                       )}
 
                       {/* Row 1: Document Name and Document Type (Read-only) */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label className="mb-2 block text-sm font-medium text-slate-700">
                             Document Name *
@@ -595,7 +595,7 @@ export function UploadDetailsContent() {
                       </div>
 
                       {/* Row 2: Medium and Subject Dropdowns */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label className="mb-2 block text-sm font-medium text-slate-700">
                             Medium *

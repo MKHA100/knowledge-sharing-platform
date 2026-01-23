@@ -88,6 +88,7 @@ export interface Document {
   file_path: string;
   file_size: number | null;
   page_count: number | null;
+  thumbnail_url: string | null;
   // Categorization (simplified schema)
   type: DocumentType | null;
   subject: SubjectType | null;
@@ -190,8 +191,19 @@ export interface SearchFilters {
   sortBy?: "newest" | "downloads" | "upvotes";
 }
 
-export interface SearchResult extends DocumentWithUploader {
-  similarity_score: number;
+// SearchResult is a lightweight version for search/autocomplete
+export interface SearchResult {
+  id: string;
+  title: string;
+  subject: SubjectType | null;
+  medium: MediumType | null;
+  type: DocumentType | null;
+  upvotes: number;
+  downvotes: number;
+  views: number;
+  downloads: number;
+  created_at: string;
+  similarity_score?: number;
 }
 
 // Upload types
