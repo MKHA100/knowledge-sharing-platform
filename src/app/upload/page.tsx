@@ -30,8 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AppProvider } from "@/lib/app-context";
-import { ToastProvider } from "@/components/toast-provider";
 import { LoginModal } from "@/components/login-modal";
 import { storeFilesForUpload } from "@/lib/utils/file-storage";
 import { toast } from "sonner";
@@ -72,8 +70,9 @@ function UploadContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const prefilledCategory = searchParams.get("category");
+  const typeParam = searchParams.get("type");
 
-  const [selectedType, setSelectedType] = React.useState<string | null>(null);
+  const [selectedType, setSelectedType] = React.useState<string | null>(typeParam);
   const [files, setFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [uploadState, setUploadState] = React.useState<
@@ -86,6 +85,19 @@ function UploadContent() {
   const [checkingStatus, setCheckingStatus] = React.useState(true);
 
   // Check if uploads are enabled on mount
+  // Sync selectedType with URL param
+  React.useEffect(() => {
+    if (typeParam) {
+      const validType = documentTypes.find(t => t.id === typeParam);
+      if (validType) {
+        setSelectedType(typeParam);
+      }
+    } else {
+      // Clear selectedType when type param is removed (e.g., back button)
+      setSelectedType(null);
+    }
+  }, [typeParam]);
+
   React.useEffect(() => {
     const checkUploadStatus = async () => {
       try {
@@ -462,7 +474,13 @@ function UploadContent() {
                 <button
                   key={type.id}
                   type="button"
-                  onClick={() => setSelectedType(type.id)}
+                  onClick={() => {
+                    setSelectedType(type.id);
+                    // Update URL with type parameter
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("type", type.id);
+                    router.push(url.pathname + url.search, { scroll: false });
+                  }}
                   className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-8 text-center transition-all hover:border-blue-400 hover:shadow-lg hover:shadow-blue-100"
                 >
                   <div
@@ -503,7 +521,13 @@ function UploadContent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedType(null)}
+                onClick={() => {
+                  setSelectedType(null);
+                  // Remove type parameter from URL
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("type");
+                  router.push(url.pathname + url.search, { scroll: false });
+                }}
                 className="text-slate-500 hover:text-slate-700"
               >
                 Change Type
@@ -699,11 +723,8 @@ function Loading() {
 
 export default function UploadPage() {
   return (
-    <AppProvider>
-      <ToastProvider />
-      <Suspense fallback={<Loading />}>
-        <UploadContent />
-      </Suspense>
-    </AppProvider>
+    <Suspense fallback={<Loading />}>
+      <UploadContent />
+    </Suspense>
   );
 }

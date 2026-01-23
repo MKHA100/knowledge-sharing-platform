@@ -102,8 +102,14 @@ export async function GET(
     // Collect archive data into buffer
     const chunks: Buffer[] = [];
     
+    // Important: Collect data before finalizing
     archive.on("data", (chunk: Buffer) => {
       chunks.push(chunk);
+    });
+
+    // Handle errors
+    archive.on("error", (err) => {
+      throw err;
     });
 
     // Download each image from R2 and add to archive
@@ -139,14 +145,20 @@ export async function GET(
       }
     }
 
-    // Finalize the archive - this must be called after all files are appended
-    await archive.finalize();
-
-    // Wait for archive to finish
-    await new Promise<void>((resolve, reject) => {
-      archive.on("end", resolve);
+    // Finalize the archive - this triggers 'end' event
+    const finalizePromise = new Promise<void>((resolve, reject) => {
+      archive.on("end", () => {
+        console.log("Archive finalized successfully");
+        resolve();
+      });
       archive.on("error", reject);
     });
+
+    // Must call finalize to trigger the 'end' event
+    archive.finalize();
+
+    // Wait for archive to complete
+    await finalizePromise;
 
     const buffer = Buffer.concat(chunks);
     const zipFilename = `images-${uploaderName}-${timestamp}-${id.slice(0, 8)}.zip`;

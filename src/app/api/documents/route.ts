@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         
         // If literature search, filter to only include literature subjects
         if (isLitSearch) {
-          items = items.filter((doc) => literatureSubjectIds.includes(doc.subject));
+          items = items.filter((doc) => doc.subject && literatureSubjectIds.includes(doc.subject));
         }
 
         return NextResponse.json<

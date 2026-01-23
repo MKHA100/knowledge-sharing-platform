@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Upload,
@@ -53,6 +53,8 @@ interface Notification {
 
 function DashboardContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const tabParam = searchParams.get("tab");
   const {
     user,
@@ -298,7 +300,13 @@ function DashboardContent() {
             </div>
 
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={(value) => {
+              setActiveTab(value);
+              // Update URL with new tab
+              const url = new URL(window.location.href);
+              url.searchParams.set("tab", value);
+              router.push(url.pathname + url.search, { scroll: false });
+            }}>
               <TabsList className="mb-6 grid h-auto w-full grid-cols-4 gap-2 bg-transparent p-0">
                 <TabsTrigger
                   value="uploads"
@@ -857,10 +865,5 @@ function DashboardWithSuspense() {
 }
 
 export default function DashboardPage() {
-  return (
-    <AppProvider>
-      <ToastProvider />
-      <DashboardWithSuspense />
-    </AppProvider>
-  );
+  return <DashboardWithSuspense />;
 }
