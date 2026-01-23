@@ -24,7 +24,7 @@ export function EmptyState({ type, searchQuery }: EmptyStateProps) {
           keywords or browse by category.
         </p>
         <Link href="/upload">
-        <Button className="rounded-full bg-linear-to-r from-blue-500 to-indigo-600 !px-7 !py-6 !font-large text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30">
+        <Button className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 !px-7 !py-6 !font-large text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30">
           <Upload className="mr-2 h-8 w-8" />
           Upload
         </Button>
