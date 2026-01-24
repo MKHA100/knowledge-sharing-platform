@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callOpenRouterWithImage, VISION_MODEL } from "./openrouter-client";
 import type {
   AICategorization,
   DocumentType,
@@ -7,14 +7,14 @@ import type {
 } from "@/types";
 import { SUBJECT_IDS } from "@/lib/constants/subjects";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
-
 // Build the subject list dynamically from constants
 const SUBJECT_LIST = SUBJECT_IDS.map((id) => `"${id}"`).join(" | ");
 
 const CATEGORIZATION_PROMPT = `You are a document categorization assistant for a Sri Lankan O-Level student study materials platform.
 
-Analyze the provided document and return a JSON object with the following fields:
+IMPORTANT: Carefully analyze the actual content and language of the document. Do NOT default to English or Mathematics unless the document is truly in English or about Mathematics.
+
+Analyze the provided document image and return a JSON object with the following fields:
 
 {
   "documentType": "book" | "short_note" | "paper",
@@ -25,6 +25,13 @@ Analyze the provided document and return a JSON object with the following fields
   "needsReview": true | false
 }
 
+CRITICAL RULES for medium detection:
+- Look at the ACTUAL TEXT in the document image
+- If the text uses Sinhala script (සිංහල), set medium to "sinhala"
+- If the text uses Tamil script (தமிழ்), set medium to "tamil"  
+- Only set medium to "english" if the document is primarily written in English
+- Having English terms/headings in a Sinhala/Tamil document is normal - classify by the PRIMARY language
+
 Subject Reference (O-Level subjects):
 - Religion: buddhism, catholicism, saivanery, christianity, islam
 - Core: english, sinhala_language_literature, tamil_language_literature, mathematics, history, science
@@ -34,43 +41,80 @@ Subject Reference (O-Level subjects):
 - Literature: english_literary_texts, sinhala_literary_texts, tamil_literary_texts, arabic_literary_texts
 - Technical: ict, agriculture_food_technology, aquatic_bioresources, art_crafts, home_economics, health_physical_education, communication_media, design_construction, design_mechanical, design_electrical_electronic
 
-Rules:
-- "medium" refers to the PRIMARY language the document is written in (most content)
-- Having some English terms in a Sinhala document is normal - still classify as "sinhala"
-- "paper" includes: past papers, unit tests, school papers, exam papers
-- "short_note" includes: summaries, revision notes, handwritten notes
-- "book" includes: textbooks, reference materials, comprehensive guides
-- If confidence is below 0.7, set needsReview to true
-- Match the subject as specifically as possible to one of the 52 O-Level subjects
+Document type rules:
+- "paper" includes: past papers, unit tests, school papers, exam papers, question papers
+- "short_note" includes: summaries, revision notes, handwritten notes, mind maps
+- "book" includes: textbooks, reference materials, comprehensive guides, chapters
 
-Return ONLY the JSON object, no other text.`;
+If confidence is below 0.7, set needsReview to true.
+
+Return ONLY the JSON object, no other text or markdown.`;
 
 export async function categorizeDocument(
   fileBuffer: Buffer,
   mimeType: string,
 ): Promise<AICategorization> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    // Check if API key is configured
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.warn("[AI Categorization] OPENROUTER_API_KEY not set - returning default categorization");
+      return {
+        documentType: "short_note",
+        subject: "mathematics",
+        medium: "english",
+        confidence: 0,
+        title: "Untitled Document",
+        needsReview: true,
+      };
+    }
 
-    const result = await model.generateContent([
-      { text: CATEGORIZATION_PROMPT },
+    console.log(`[AI Categorization] Processing document with MIME type: ${mimeType}`);
+    console.log(`[AI Categorization] Using vision model: ${VISION_MODEL}`);
+
+    const response = await callOpenRouterWithImage(
+      CATEGORIZATION_PROMPT,
+      fileBuffer.toString("base64"),
+      mimeType,
       {
-        inlineData: {
-          mimeType,
-          data: fileBuffer.toString("base64"),
-        },
-      },
-    ]);
+        temperature: 0.2,
+        maxTokens: 512,
+      }
+    );
 
-    const response = result.response.text();
+    console.log(`[AI Categorization] Raw response: ${response.substring(0, 200)}...`);
 
     // Extract JSON from response
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("[AI Categorization] No JSON found in response:", response);
       throw new Error("No JSON found in response");
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
+    
+    console.log(`[AI Categorization] Parsed result:`, {
+      documentType: parsed.documentType,
+      subject: parsed.subject,
+      medium: parsed.medium,
+      confidence: parsed.confidence,
+      title: parsed.title,
+    });
+
+    // Validate the response
+    const validDocTypes = ["book", "short_note", "paper"];
+    const validMediums = ["sinhala", "english", "tamil"];
+    
+    if (!validDocTypes.includes(parsed.documentType)) {
+      console.warn(`[AI Categorization] Invalid documentType: ${parsed.documentType}, defaulting to short_note`);
+      parsed.documentType = "short_note";
+      parsed.needsReview = true;
+    }
+    
+    if (!validMediums.includes(parsed.medium)) {
+      console.warn(`[AI Categorization] Invalid medium: ${parsed.medium}, defaulting to english`);
+      parsed.medium = "english";
+      parsed.needsReview = true;
+    }
 
     return {
       documentType: parsed.documentType as DocumentType,
@@ -81,7 +125,7 @@ export async function categorizeDocument(
       needsReview: parsed.needsReview || parsed.confidence < 0.7,
     };
   } catch (error) {
-    console.error("AI categorization failed:", error);
+    console.error("[AI Categorization] Failed:", error);
 
     // Return default with review flag
     return {

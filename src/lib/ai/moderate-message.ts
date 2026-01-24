@@ -1,7 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { callOpenRouter } from "./openrouter-client";
 
 export type SentimentCategory = "positive" | "neutral" | "negative" | "inappropriate";
 
@@ -13,15 +10,15 @@ export interface ModerationResult {
 }
 
 /**
- * Analyzes a thank-you message using Google Gemini AI
+ * Analyzes a thank-you message using OpenRouter AI (Gemma 3 27B)
  * and determines if it should be auto-approved or requires admin review
  */
 export async function moderateThankYouMessage(
   message: string
 ): Promise<ModerationResult> {
   // Check if API key is configured
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn("GEMINI_API_KEY not set - auto-approving all messages");
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.warn("OPENROUTER_API_KEY not set - auto-approving all messages");
     return {
       category: "positive",
       confidence: 1.0,
@@ -31,8 +28,6 @@ export async function moderateThankYouMessage(
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
     const prompt = `You are a content moderation AI for a knowledge-sharing platform where students send thank-you messages to document uploaders. Your task is to analyze the sentiment and appropriateness of a thank-you message.
 
 Analyze the following message and categorize it into ONE of these categories:
@@ -62,9 +57,10 @@ Analyze the following message and categorize it into ONE of these categories:
   "reasoning": "Brief explanation of why this category was chosen (1-2 sentences)"
 }`;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await callOpenRouter(prompt, {
+      temperature: 0.1,
+      maxTokens: 256,
+    });
 
     // Parse JSON response
     const jsonMatch = text.match(/\{[\s\S]*\}/);

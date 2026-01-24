@@ -147,8 +147,10 @@ R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=
 R2_PUBLIC_URL=
 
-# AI Moderation
-GEMINI_API_KEY=
+# AI Moderation (OpenRouter)
+# Text moderation uses: google/gemma-3-27b-it:free (free tier)
+# Document categorization uses: google/gemini-2.0-flash-exp (paid - uses your credits for dedicated rate limits)
+OPENROUTER_API_KEY=
 ```
 
 ## API Route Conventions

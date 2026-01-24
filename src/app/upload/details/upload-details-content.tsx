@@ -267,15 +267,21 @@ export function UploadDetailsContent() {
           }
           
           try {
+            // Add delay between AI requests to avoid rate limits
+            // First file: no delay, subsequent files: 2 second delay
+            if (i > 0) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
             // For large files, we'll let the server handle sampling
             // But limit what we send to avoid body size issues
-            // If file is over 8MB base64, truncate (server will still try to process)
-            const MAX_BASE64_SIZE = 8 * 1024 * 1024; // 8MB
+            // Reduced to 8MB to minimize rate limit issues (server samples anyway)
+            const MAX_BASE64_SIZE = 8 * 1024 * 1024; // 8MB (reduced from 4MB)
             let contentToSend = file.fileBase64;
 
             if (file.fileBase64.length > MAX_BASE64_SIZE) {
               console.log(
-                `File ${file.fileName} is large (${Math.round(file.fileBase64.length / 1024 / 1024)}MB), sending truncated for analysis`,
+                `File ${file.fileName} is large (${Math.round(file.fileBase64.length / 1024 / 1024)}MB), sending only filename for analysis`,
               );
               // For very large files, just send the filename for basic categorization
               // The server will use filename-based heuristics
