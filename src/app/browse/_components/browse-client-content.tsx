@@ -58,8 +58,10 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
   // Documents state
   const [documents, setDocuments] = useState<DocumentWithUploader[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [counts, setCounts] = useState({ books: 0, shortNotes: 0, papers: 0 });
 
   // Debounced search - update URL after typing stops
@@ -96,6 +98,7 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
     const fetchDocuments = async () => {
       setLoading(true);
       setError(null);
+      setOffset(0); // Reset offset when filters change
 
       try {
         const params: Record<string, string> = {};
@@ -194,6 +197,36 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
       return () => container.removeEventListener("scroll", updateScrollButtons);
     }
   }, []);
+
+  // Load more documents
+  const loadMore = async () => {
+    if (loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const params: Record<string, string> = {
+        offset: String(documents.length), // Use current document count as offset
+      };
+
+      if (searchQuery) params.query = searchQuery;
+      if (subjectId && subjectId !== "all") params.subject = subjectId;
+      if (lang !== "all") params.medium = lang;
+      if (type !== "all") params.documentType = type;
+      if (sort) params.sortBy = sort;
+
+      const response = await api.documents.list(params);
+
+      if (response.success) {
+        const newItems: DocumentWithUploader[] = response.data?.items || [];
+        setDocuments((prev) => [...prev, ...newItems]);
+        setOffset(documents.length + newItems.length);
+      }
+    } catch (err) {
+      console.error("Error loading more documents:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -414,10 +447,9 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
         {!loading && !error && documents.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {documents.map((doc) => (
-              <DocumentCard 
-                key={doc.id} 
-                document={doc} 
-                onDocumentClick={openDocumentWithURL}
+              <DocumentCard
+                key={doc.id}
+                document={doc}
               />
             ))}
           </div>
@@ -440,11 +472,10 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
             <Button
               variant="outline"
               className="gap-2 rounded-full px-8"
-              onClick={() => {
-                // TODO: Implement load more functionality
-              }}
+              onClick={loadMore}
+              disabled={loadingMore}
             >
-              Load More
+              {loadingMore ? "Loading..." : "Load More"}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

@@ -78,26 +78,30 @@ export async function extractSamplePages(
 /**
  * Create a combined PDF from sample pages for AI analysis
  * This sends one PDF with the sampled pages to Gemini
+ * Optimized to send only 2 pages max to minimize token usage and rate limits
  */
 export async function createSampledPdf(pdfBuffer: Buffer): Promise<Buffer> {
   const srcDoc = await PDFDocument.load(pdfBuffer);
   const totalPages = srcDoc.getPageCount();
 
-  if (totalPages <= 3) {
-    // Document is already short, use as-is
+  if (totalPages <= 2) {
+    // Document is already very short, use as-is
     return pdfBuffer;
   }
 
-  // Create new document with sampled pages
+  // Create new document with sampled pages - only 2 pages max for efficiency
   const newDoc = await PDFDocument.create();
 
-  // Always include first 2 pages
-  const pagesToCopy = [0, 1];
+  // Always include first page (usually has title/subject info)
+  const pagesToCopy = [0];
 
-  // Add middle page for longer documents
-  if (totalPages > 4) {
-    pagesToCopy.push(Math.floor(totalPages / 2));
+  // Add second page if available (often has table of contents or intro)
+  if (totalPages > 1) {
+    pagesToCopy.push(1);
   }
+
+  // Note: We removed middle page sampling to reduce token usage
+  // First 2 pages are usually enough to determine subject/language
 
   const copiedPages = await newDoc.copyPages(srcDoc, pagesToCopy);
   for (const page of copiedPages) {
@@ -135,6 +139,7 @@ export function estimateTokenUsage(pageCount: number): number {
  * Check if PDF sampling is recommended based on page count
  */
 export function shouldSamplePdf(pageCount: number): boolean {
-  // Sample if more than 5 pages to save tokens
-  return pageCount > 5;
+  // Sample if more than 3 pages to save tokens (reduced from 5)
+  // This ensures we always send minimal pages to the AI
+  return pageCount > 3;
 }
