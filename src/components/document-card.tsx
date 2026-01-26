@@ -1,14 +1,13 @@
 "use client";
 
-import React from "react";
-
+import React, { memo } from "react";
 import { useState } from "react";
+import Image from "next/image";
 import {
-  Bookmark,
   Heart,
   Download,
   FileText,
-  ThumbsUp,
+  ThumbsDown,
   Eye,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,24 +22,15 @@ interface DocumentCardProps {
   document: DocumentWithUploader;
 }
 
-export function DocumentCard({ document }: DocumentCardProps) {
+// Memoize component to prevent unnecessary re-renders
+export const DocumentCard = memo(function DocumentCard({ document }: DocumentCardProps) {
   const { setSelectedDocument, isLoggedIn, setShowLoginModal } = useApp();
   const [isHovered, setIsHovered] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [hasLiked, setHasLiked] = useState(false);
+  const [hasDownvoted, setHasDownvoted] = useState(false);
   const [upvoteCount, setUpvoteCount] = useState(document.upvotes);
-  const [hasUpvoted, setHasUpvoted] = useState(false);
 
-  const handleSave = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isLoggedIn) {
-      setShowLoginModal(true);
-      return;
-    }
-    setIsSaved(!isSaved);
-    toast.success(isSaved ? "Removed from saved" : "Saved to your collection");
-  };
-
-  const handleUpvote = async (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLoggedIn) {
       setShowLoginModal(true);
@@ -50,13 +40,32 @@ export function DocumentCard({ document }: DocumentCardProps) {
       const result = await api.documents.upvote(document.id);
       if (result.success) {
         setUpvoteCount(result.data.upvotes);
-        setHasUpvoted(result.data.user_vote === "upvote");
+        setHasLiked(result.data.user_vote === "upvote");
+        setHasDownvoted(false); // Clear downvote when liking
         toast.success(
-          hasUpvoted ? "Upvote removed" : "Thanks for your feedback!",
+          hasLiked ? "Like removed" : "Thanks for your feedback!",
         );
       }
     } catch {
-      toast.error("Failed to upvote");
+      toast.error("Failed to like");
+    }
+  };
+
+  const handleDownvote = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      setShowLoginModal(true);
+      return;
+    }
+    try {
+      const result = await api.documents.downvote(document.id);
+      if (result.success) {
+        setHasDownvoted(result.data.user_vote === "downvote");
+        setHasLiked(false); // Clear like when downvoting
+        toast("Feedback noted", { duration: 2000 });
+      }
+    } catch {
+      toast.error("Failed to downvote");
     }
   };
 
@@ -86,18 +95,18 @@ export function DocumentCard({ document }: DocumentCardProps) {
     >
       {/* Document Preview Area */}
       <div className="relative aspect-[4/3] overflow-hidden">
-        {/* Background with PDF preview or fallback gradient */}
-        {document.file_path ? (
+        {/* Background with optimized thumbnail or fallback gradient */}
+        {document.thumbnail_url ? (
           <div className="absolute inset-0 bg-slate-100">
-            {/* PDF First Page Preview using embed */}
-            <iframe
-              src={`${document.file_path}#page=1&view=FitH&toolbar=0&navpanes=0`}
-              className="h-full w-full pointer-events-none"
-              title={document.title}
+            {/* Optimized thumbnail with Next.js Image */}
+            <Image
+              src={document.thumbnail_url}
+              alt={document.title}
+              fill
+              className="object-cover"
               loading="lazy"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             />
-            {/* Overlay to make it look like an image */}
-            <div className="absolute inset-0 bg-transparent" />
           </div>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200">
@@ -115,7 +124,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
           )}
         />
 
-        {/* Top Right - Save & Like buttons (slide in from right) */}
+        {/* Top Right - Like & Downvote buttons (slide in from right) */}
         <div
           className={cn(
             "absolute right-3 top-3 flex items-center gap-2 transition-all duration-300",
@@ -124,27 +133,29 @@ export function DocumentCard({ document }: DocumentCardProps) {
         >
           <button
             type="button"
-            onClick={handleSave}
+            onClick={handleLike}
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-lg backdrop-blur-md transition-all",
-              isSaved
-                ? "bg-white text-blue-600"
-                : "bg-black/40 text-white hover:bg-black/60",
-            )}
-          >
-            <Bookmark className={cn("h-5 w-5", isSaved && "fill-current")} />
-          </button>
-          <button
-            type="button"
-            onClick={handleUpvote}
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-lg backdrop-blur-md transition-all",
-              hasUpvoted
+              hasLiked
                 ? "bg-white text-rose-500"
                 : "bg-black/40 text-white hover:bg-black/60",
             )}
+            aria-label={hasLiked ? "Unlike" : "Like"}
           >
-            <ThumbsUp className={cn("h-5 w-5", hasUpvoted && "fill-current")} />
+            <Heart className={cn("h-5 w-5", hasLiked && "fill-current")} />
+          </button>
+          <button
+            type="button"
+            onClick={handleDownvote}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-lg backdrop-blur-md transition-all",
+              hasDownvoted
+                ? "bg-white text-slate-700"
+                : "bg-black/40 text-white hover:bg-black/60",
+            )}
+            aria-label={hasDownvoted ? "Remove downvote" : "Downvote"}
+          >
+            <ThumbsDown className={cn("h-5 w-5", hasDownvoted && "fill-current")} />
           </button>
         </div>
 
@@ -158,10 +169,12 @@ export function DocumentCard({ document }: DocumentCardProps) {
           {/* Author */}
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8 border-2 border-white/30">
-              <AvatarImage
-                src={document.uploader_avatar || "/placeholder.svg"}
-                alt={document.uploader_name || "Anonymous"}
-              />
+              {document.uploader_avatar && (
+                <AvatarImage
+                  src={document.uploader_avatar}
+                  alt={document.uploader_name || "Anonymous"}
+                />
+              )}
               <AvatarFallback className="bg-white/20 text-xs text-white">
                 {(document.uploader_name || "A").charAt(0)}
               </AvatarFallback>
@@ -203,7 +216,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
             {document.downloads.toLocaleString()}
           </span>
           <span className="flex items-center gap-1">
-            <ThumbsUp className="h-3 w-3" />
+            <Heart className="h-3 w-3" />
             {upvoteCount}
           </span>
           <span className="flex items-center gap-1">
@@ -214,4 +227,4 @@ export function DocumentCard({ document }: DocumentCardProps) {
       </div>
     </div>
   );
-}
+});

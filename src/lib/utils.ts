@@ -47,13 +47,12 @@ export function getMimeType(filename: string): string {
     jpeg: "image/jpeg",
     png: "image/png",
     doc: "application/msword",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  };
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",    txt: "text/plain",  };
   return mimeTypes[ext] || "application/octet-stream";
 }
 
 export function isValidFileType(filename: string): boolean {
-  const validExtensions = ["pdf", "jpg", "jpeg", "png", "doc", "docx"];
+  const validExtensions = ["pdf", "jpg", "jpeg", "png", "doc", "docx", "txt"];
   return validExtensions.includes(getFileExtension(filename));
 }
 

@@ -1,10 +1,10 @@
 /**
  * PDF Converter Utility
- * Converts images and Word documents to PDF format
+ * Converts images, Word documents, and text files to PDF format
  * All documents in the system are stored as PDFs
  */
 
-import { PDFDocument, PageSizes } from "pdf-lib";
+import { PDFDocument, PageSizes, rgb } from "pdf-lib";
 
 /**
  * Check if a file is an image
@@ -22,6 +22,13 @@ export function isWordDocument(mimeType: string): boolean {
     mimeType ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   );
+}
+
+/**
+ * Check if a file is a text file
+ */
+export function isTxtFile(mimeType: string): boolean {
+  return mimeType === "text/plain";
 }
 
 /**
@@ -131,6 +138,85 @@ export async function convertImagesToPdf(
 }
 
 /**
+ * Convert text file to PDF
+ * Wraps text with proper formatting and pagination
+ */
+export async function convertTxtToPdf(txtBuffer: Buffer): Promise<Buffer> {
+  // Decode text from buffer (assume UTF-8)
+  const text = txtBuffer.toString("utf-8");
+
+  // Create PDF with text content
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont("Helvetica" as never);
+
+  const fontSize = 12;
+  const lineHeight = fontSize * 1.5;
+  const pageWidth = PageSizes.A4[0];
+  const pageHeight = PageSizes.A4[1];
+  const margin = 50;
+  const maxWidth = pageWidth - margin * 2;
+  const maxHeight = pageHeight - margin * 2;
+
+  let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+  let yPosition = pageHeight - margin;
+
+  // Split text into lines and wrap if needed
+  const lines = text.split("\n");
+  for (const line of lines) {
+    // Wrap long lines
+    const words = line.split(" ");
+    let currentLine = "";
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+      if (textWidth > maxWidth && currentLine) {
+        // Draw current line
+        currentPage.drawText(currentLine, {
+          x: margin,
+          y: yPosition,
+          size: fontSize,
+          font,
+          color: rgb(0, 0, 0),
+        });
+        yPosition -= lineHeight;
+        currentLine = word;
+
+        // Check if we need a new page
+        if (yPosition < margin) {
+          currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPosition = pageHeight - margin;
+        }
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    // Draw the last line
+    if (currentLine) {
+      currentPage.drawText(currentLine, {
+        x: margin,
+        y: yPosition,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= lineHeight;
+    }
+
+    // Check if we need a new page
+    if (yPosition < margin) {
+      currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+      yPosition = pageHeight - margin;
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
+}
+
+/**
  * Convert Word document to PDF
  * Uses mammoth to extract HTML, then converts to PDF
  */
@@ -213,7 +299,7 @@ export async function convertToPdf(
   mimeType: string,
 ): Promise<{
   pdfBuffer: Buffer;
-  sourceType: "pdf" | "converted_image" | "converted_docx";
+  sourceType: "pdf" | "converted_image" | "converted_docx" | "converted_txt";
 }> {
   if (isPdfFile(mimeType)) {
     return { pdfBuffer: fileBuffer, sourceType: "pdf" };
@@ -227,6 +313,11 @@ export async function convertToPdf(
   if (isWordDocument(mimeType)) {
     const pdfBuffer = await convertWordToPdf(fileBuffer);
     return { pdfBuffer, sourceType: "converted_docx" };
+  }
+
+  if (isTxtFile(mimeType)) {
+    const pdfBuffer = await convertTxtToPdf(fileBuffer);
+    return { pdfBuffer, sourceType: "converted_txt" };
   }
 
   throw new Error(`Unsupported file type: ${mimeType}`);

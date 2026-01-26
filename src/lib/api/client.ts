@@ -46,6 +46,11 @@ export const api = {
       });
       return response.json();
     },
+    counts: async (params: Record<string, string> = {}) => {
+      const url = new URLSearchParams(params);
+      const response = await fetch(`${API_BASE}/documents/counts?${url}`);
+      return response.json();
+    },
     view: async (id: string) => {
       const response = await fetch(`${API_BASE}/documents/${id}/view`, {
         method: "POST",

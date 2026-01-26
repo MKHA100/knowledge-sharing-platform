@@ -2,75 +2,82 @@
 
 > Free O-Level study materials for Sri Lankan students
 
+**Website:** https://studyshare.space
+**Browse Materials:** https://studyshare.space/browse
+**FAQ:** https://studyshare.space/faq
+
 StudyShare is a platform where students share and download study materials for the Sri Lankan O-Level curriculum. Materials are available in Sinhala, English, and Tamil.
 
 ## What We Offer
 
-- **Past Papers**: Official and model O-Level examination papers
-- **Short Notes**: Concise study notes created by students and teachers
-- **Textbooks**: Educational books and reference materials
+- **Past Papers**: Official and model O-Level examination papers - https://studyshare.space/browse?type=paper
+- **Short Notes**: Concise study notes created by students and teachers - https://studyshare.space/browse?type=short_note  
+- **Textbooks**: Educational books and reference materials - https://studyshare.space/browse?type=book
 - **Free Access**: All materials are free to download
+
+## Languages/Mediums
+
+- **Sinhala Medium:** https://studyshare.space/browse?lang=sinhala
+- **English Medium:** https://studyshare.space/browse?lang=english
+- **Tamil Medium:** https://studyshare.space/browse?lang=tamil
 
 ## Subjects
 
 We cover all 52 O-Level subjects including:
 
 ### Core Subjects
-- Mathematics
-- Science
-- English
-- Sinhala Language & Literature
-- Tamil Language & Literature
-- History
+- Mathematics - https://studyshare.space/browse/mathematics
+- Science - https://studyshare.space/browse/science
+- English - https://studyshare.space/browse/english
+- Sinhala Language & Literature - https://studyshare.space/browse/sinhala-language-literature
+- Tamil Language & Literature - https://studyshare.space/browse/tamil-language-literature
+- History - https://studyshare.space/browse/history
 
 ### Religion
-- Buddhism
-- Christianity
-- Islam
-- Catholicism
-- Hinduism (Saivanery)
+- Buddhism - https://studyshare.space/browse/buddhism
+- Christianity - https://studyshare.space/browse/christianity
+- Islam - https://studyshare.space/browse/islam
+- Catholicism - https://studyshare.space/browse/catholicism
+- Hinduism (Saivanery) - https://studyshare.space/browse/saivanery
 
 ### Category I (Commerce & Languages)
-- Business & Accounting Studies
-- Geography
-- Civic Education
-- Entrepreneurship Studies
-- Second Languages (Sinhala, Tamil)
-- Foreign Languages (French, German, Japanese, Korean, Arabic, Hindi)
+- Business & Accounting Studies - https://studyshare.space/browse/business-accounting
+- Geography - https://studyshare.space/browse/geography
+- Civic Education - https://studyshare.space/browse/civic-education
+- Entrepreneurship Studies - https://studyshare.space/browse/entrepreneurship
+- ICT (Information & Communication Technology) - https://studyshare.space/browse/ict
 
 ### Category II (Arts & Technical)
-- Art
-- Music
-- Drama & Theatre
-- Dancing
-- Home Economics
-- Health & Physical Education
+- Art - https://studyshare.space/browse/art-crafts
+- Music (Oriental/Western/Carnatic) - https://studyshare.space/browse/music-oriental
+- Drama & Theatre - https://studyshare.space/browse/drama-theatre
+- Home Economics - https://studyshare.space/browse/home-economics
+- Health & Physical Education - https://studyshare.space/browse/health-physical-education
 
 ### Category III (Technology & Science)
-- Information & Communication Technology
-- Agriculture & Food Technology
-- Aquatic Bioresources Technology
-- Design & Construction Technology
-- Design & Mechanical Technology
-- Design, Electrical & Electronic Technology
+- Agriculture & Food Technology - https://studyshare.space/browse/agriculture-food-technology
+- Design & Construction Technology - https://studyshare.space/browse/design-construction
+- Design & Mechanical Technology - https://studyshare.space/browse/design-mechanical
+- Design & Electrical/Electronic Technology - https://studyshare.space/browse/design-electrical-electronic
 
-## Languages Available
+## Target Audience
 
-Materials are available in three mediums:
-- Sinhala (සිංහල)
-- English
-- Tamil (தமிழ்)
+- Sri Lankan O-Level students (Grade 10-11)
+- Teachers preparing study materials
+- Parents helping with education
+- Anyone preparing for GCE O-Level examinations
 
 ## Key Pages
 
-- Homepage: https://studyshare.lk
-- Browse Materials: https://studyshare.lk/browse
-- FAQ: https://studyshare.lk/faq
+- Homepage: https://studyshare.space
+- Browse Materials: https://studyshare.space/browse
+- FAQ: https://studyshare.space/faq
 
 ## For Detailed Information
 
-See our extended documentation: https://studyshare.lk/llms-full.txt
+See our extended documentation: https://studyshare.space/llms-full.txt
+For structured data (JSON): https://studyshare.space/llms.json
 
 ## Contact
 
-For questions about StudyShare, visit our website or use the feedback form on our homepage.
+For questions about StudyShare, visit our FAQ: https://studyshare.space/faq

@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         // Convert to PDF if needed (Word docs, etc.)
         let pdfBuffer: Buffer;
-        let sourceType: "pdf" | "converted_image" | "converted_docx";
+        let sourceType: "pdf" | "converted_image" | "converted_docx" | "converted_txt";
 
         try {
           const result = await convertToPdf(buffer, mimeType);

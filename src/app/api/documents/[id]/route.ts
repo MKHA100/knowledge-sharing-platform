@@ -19,7 +19,9 @@ export async function GET(
       *,
       users!uploader_id (
         name,
-        avatar_url
+        avatar_url,
+        anon_name,
+        anon_avatar_seed
       )
     `,
     )
@@ -35,8 +37,10 @@ export async function GET(
 
   const document: DocumentWithUploader = {
     ...data,
-    uploader_name: data.users?.name || "Anonymous",
-    uploader_avatar: data.users?.avatar_url || null,
+    uploader_name: data.users?.anon_name || "Anonymous",
+    uploader_avatar: data.users?.anon_avatar_seed 
+      ? `https://api.dicebear.com/7.x/bottts/svg?seed=${data.users.anon_avatar_seed}`
+      : null,
   };
 
   return NextResponse.json<ApiResponse<DocumentWithUploader>>({

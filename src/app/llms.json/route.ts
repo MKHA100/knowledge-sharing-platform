@@ -9,7 +9,7 @@ import { subjectIdToSlug } from "@/lib/utils/url-params";
  * following the llms.txt specification
  */
 export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.lk";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.space";
 
   const data = {
     name: "StudyShare",

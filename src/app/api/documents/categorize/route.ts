@@ -209,6 +209,13 @@ ${hasDocument ? "Analyze this document carefully and determine:" : "Based on the
    - "Book" includes: textbooks, chapters, reference materials
 
 4. SUGGESTED TITLE: Provide a clean, descriptive title for this document.
+   **CRITICAL: The title MUST be in English only, regardless of the document's language.**
+   If the document has a title in Sinhala or Tamil, transliterate it to English or create a descriptive English title.
+   Examples: 
+   - "විද්‍යාව" → "Science"
+   - "கணிதம்" → "Mathematics"  
+   - Original non-English title → translate or transliterate to English
+   Never return titles with Sinhala or Tamil characters.
 
 File Name: ${fileName}
 
@@ -226,7 +233,7 @@ Respond ONLY in this exact JSON format (no markdown, no code blocks):
   "languageConfidence": 0.0 to 1.0,
   "documentType": "type from the list",
   "documentTypeConfidence": 0.0 to 1.0,
-  "suggestedTitle": "Clean document title"
+  "suggestedTitle": "Clean document title IN ENGLISH ONLY"
 }`;
 
     // Build the messages array for OpenRouter

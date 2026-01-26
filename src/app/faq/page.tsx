@@ -6,7 +6,7 @@ import { SharedNavbar } from "@/components/shared-navbar";
 import { AppProvider } from "@/lib/app-context";
 import { ToastProvider } from "@/components/toast-provider";
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.lk";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.space";
 
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",

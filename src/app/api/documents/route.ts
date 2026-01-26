@@ -82,7 +82,9 @@ export async function GET(request: NextRequest) {
         *,
         users!uploader_id (
           name,
-          avatar_url
+          avatar_url,
+          anon_name,
+          anon_avatar_seed
         )
       `,
         { count: "exact" },
@@ -185,13 +187,15 @@ export async function GET(request: NextRequest) {
     // Apply pagination after scoring
     const paginatedDocs = scoredDocs.slice(offset, offset + limit);
 
-    // Transform to final format
+    // Transform to final format with anonymous user data
     const documents: DocumentWithUploader[] = paginatedDocs.map((doc: any) => ({
       id: doc.id,
       title: doc.title,
       uploader_id: doc.uploader_id,
-      uploader_name: doc.users?.name || "Anonymous",
-      uploader_avatar: doc.users?.avatar_url || null,
+      uploader_name: doc.users?.anon_name || "Anonymous",
+      uploader_avatar: doc.users?.anon_avatar_seed 
+        ? `https://api.dicebear.com/7.x/bottts/svg?seed=${doc.users.anon_avatar_seed}`
+        : null,
       subject: doc.subject,
       medium: doc.medium,
       type: doc.type,
@@ -233,7 +237,9 @@ export async function GET(request: NextRequest) {
       *,
       users!uploader_id (
         name,
-        avatar_url
+        avatar_url,
+        anon_name,
+        anon_avatar_seed
       )
     `,
       { count: "exact" },
@@ -269,11 +275,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Transform data to include uploader info
+  // Transform data to include anonymous uploader info
   const documents: DocumentWithUploader[] = (data || []).map((doc: any) => ({
     ...doc,
-    uploader_name: doc.users?.name || "Anonymous",
-    uploader_avatar: doc.users?.avatar_url || null,
+    uploader_name: doc.users?.anon_name || "Anonymous",
+    uploader_avatar: doc.users?.anon_avatar_seed 
+      ? `https://api.dicebear.com/7.x/bottts/svg?seed=${doc.users.anon_avatar_seed}`
+      : null,
     users: undefined,
   }));
 
