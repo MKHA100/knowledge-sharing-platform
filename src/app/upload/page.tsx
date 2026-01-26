@@ -164,12 +164,26 @@ function UploadContent() {
     setIsDragging(false);
     const droppedFiles = Array.from(e.dataTransfer.files);
     setFiles((prev) => [...prev, ...droppedFiles]);
+    
+    if (droppedFiles.length > 0) {
+      toast.success(`${droppedFiles.length} file(s) added`, {
+        description: `Ready to upload`,
+        duration: 3000,
+      });
+    }
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
       setFiles((prev) => [...prev, ...selectedFiles]);
+      
+      if (selectedFiles.length > 0) {
+        toast.success(`${selectedFiles.length} file(s) added`, {
+          description: `Ready to upload`,
+          duration: 3000,
+        });
+      }
     }
   };
 
@@ -556,7 +570,7 @@ function UploadContent() {
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
                     className="hidden"
                     onChange={handleFileSelect}
                   />

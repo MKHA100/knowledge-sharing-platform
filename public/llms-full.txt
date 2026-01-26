@@ -100,16 +100,29 @@ StudyShare connects students across Sri Lanka by enabling them to share educatio
 ## URL Structure
 
 ### Public Pages (Indexable)
-- Homepage: https://studyshare.lk/
-- Browse All: https://studyshare.lk/browse
-- Browse by Subject: https://studyshare.lk/browse/{subject-slug}
-- FAQ: https://studyshare.lk/faq
+- Homepage: https://studyshare.space/
+- Browse All: https://studyshare.space/browse
+- Browse by Subject: https://studyshare.space/browse/{subject-slug}
+- FAQ: https://studyshare.space/faq
 
 ### Subject URL Examples
-- Mathematics: https://studyshare.lk/browse/mathematics
-- Science: https://studyshare.lk/browse/science
-- Buddhism: https://studyshare.lk/browse/buddhism
-- ICT: https://studyshare.lk/browse/information-communication-technology
+- Mathematics: https://studyshare.space/browse/mathematics
+- Science: https://studyshare.space/browse/science
+- Buddhism: https://studyshare.space/browse/buddhism
+- ICT: https://studyshare.space/browse/ict
+- Business & Accounting: https://studyshare.space/browse/business-accounting
+- Geography: https://studyshare.space/browse/geography
+- History: https://studyshare.space/browse/history
+
+### Filter URL Examples
+- All Past Papers: https://studyshare.space/browse?type=paper
+- All Short Notes: https://studyshare.space/browse?type=short_note
+- All Books: https://studyshare.space/browse?type=book
+- Sinhala Medium: https://studyshare.space/browse?lang=sinhala
+- English Medium: https://studyshare.space/browse?lang=english
+- Tamil Medium: https://studyshare.space/browse?lang=tamil
+- Science Past Papers: https://studyshare.space/browse/science?type=paper
+- Maths Notes in Sinhala: https://studyshare.space/browse/mathematics?type=short_note&lang=sinhala
 
 ### Private Pages (Not Indexable)
 - Dashboard: /dashboard (requires login)
@@ -126,8 +139,10 @@ Materials can be filtered by:
 
 ## API Information
 
-StudyShare provides a JSON endpoint for AI systems:
-- Machine-readable data: https://studyshare.lk/llms.json
+StudyShare provides endpoints for AI systems:
+- Machine-readable JSON: https://studyshare.space/llms.json
+- Simple documentation: https://studyshare.space/llms.txt
+- Detailed documentation: https://studyshare.space/llms-full.txt
 
 ## Frequently Asked Questions
 
@@ -165,6 +180,7 @@ Use the feedback form on our homepage or contact us through the website.
 ## Contact & Support
 
 For questions, suggestions, or issues:
+- Visit our FAQ: https://studyshare.space/faq
 - Use the feedback form on the homepage
 - Materials are community-contributed
 

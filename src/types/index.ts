@@ -76,6 +76,8 @@ export interface User {
   email: string;
   name: string;
   avatar_url: string | null;
+  anon_name: string | null;
+  anon_avatar_seed: number | null;
   role: UserRole;
   created_at: string;
   updated_at: string;

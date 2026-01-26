@@ -15,7 +15,7 @@ import {
   generateBreadcrumbSchema,
 } from "@/components/structured-data";
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.lk";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.space";
 
 interface SubjectPageProps {
   params: Promise<{ subject: string }>;

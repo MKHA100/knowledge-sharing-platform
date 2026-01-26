@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { PHProvider, PostHogPageview } from "@/lib/posthog/provider";
 import {
@@ -14,28 +15,47 @@ import "./globals.css";
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.lk";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.space";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "StudyShare - O-Level Study Materials for Sri Lankan Students",
+    default: "StudyShare - Free O-Level Study Materials for Sri Lankan Students",
     template: "%s | StudyShare",
   },
   description:
-    "Share and download study materials, short notes, past papers, and books for O-Level students in Sri Lanka. Join our community of learners helping each other succeed.",
+    "Download free O-Level past papers, short notes, and textbooks for Sri Lankan students. All 52 subjects covered in Sinhala, English, and Tamil medium. Join our community of learners today!",
   keywords: [
+    // Primary keywords
     "O-Level",
+    "O Level",
+    "O/L",
     "Sri Lanka",
     "study materials",
     "past papers",
     "short notes",
-    "O/L",
-    "exam preparation",
     "free education",
-    "Sinhala medium",
-    "English medium",
-    "Tamil medium",
+    // Long-tail keywords
+    "O-Level past papers free download",
+    "Sri Lanka O Level notes",
+    "GCE Ordinary Level papers",
+    "O/L exam preparation",
+    "free O Level study materials",
+    "O-Level revision notes",
+    "O-Level model papers",
+    // Subject-specific
+    "O Level Mathematics past papers",
+    "O Level Science notes",
+    "O Level English past papers",
+    // Medium-specific
+    "Sinhala medium past papers",
+    "English medium O Level notes",
+    "Tamil medium study materials",
+    // Local variations
+    "Grade 10 past papers Sri Lanka",
+    "Grade 11 exam papers",
+    "OL papers download",
+    "සාමාන්‍ය පෙළ පසුගිය විභාග ප්‍රශ්න",
   ],
   authors: [{ name: "StudyShare" }],
   creator: "StudyShare",
@@ -43,6 +63,8 @@ export const metadata: Metadata = {
   generator: "Next.js",
   applicationName: "StudyShare",
   referrer: "origin-when-cross-origin",
+  category: "Education",
+  classification: "Educational Resources",
   formatDetection: {
     email: false,
     address: false,
@@ -103,10 +125,20 @@ export const metadata: Metadata = {
   alternates: {
     canonical: baseUrl,
   },
-  // Add Google Search Console verification when available
-  // verification: {
-  //   google: "your-verification-code",
-  // },
+  // Search Console Verification
+  // Add your verification codes from Google/Bing after registering
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
+    yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || "",
+    other: {
+      "msvalidate.01": process.env.NEXT_PUBLIC_BING_VERIFICATION || "",
+    },
+  },
+  other: {
+    // Additional SEO hints
+    "google-site-verification": process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
+    "theme-color": "#3b82f6",
+  },
 };
 
 export default function RootLayout({
@@ -132,6 +164,7 @@ export default function RootLayout({
             </Suspense>
             {children}
             <Analytics />
+            <SpeedInsights />
           </body>
         </PHProvider>
       </html>

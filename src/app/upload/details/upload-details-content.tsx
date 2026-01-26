@@ -141,6 +141,8 @@ export function UploadDetailsContent() {
   const searchParams = useSearchParams();
 
   const uploadType = searchParams.get("type") || "book";
+  // Track if user intentionally selected a specific type (not jumbled)
+  const isTypePreselected = uploadType !== "jumbled";
   const fileCount = parseInt(searchParams.get("files") || "1");
 
   const [files, setFiles] = useState<FileData[]>([]);
@@ -275,8 +277,8 @@ export function UploadDetailsContent() {
             
             // For large files, we'll let the server handle sampling
             // But limit what we send to avoid body size issues
-            // Reduced to 8MB to minimize rate limit issues (server samples anyway)
-            const MAX_BASE64_SIZE = 8 * 1024 * 1024; // 8MB (reduced from 4MB)
+            // Reduced to 20MB to minimize rate limit issues (server samples anyway)
+            const MAX_BASE64_SIZE = 20 * 1024 * 1024; // 20MB (reduced from 4MB)
             let contentToSend = file.fileBase64;
 
             if (file.fileBase64.length > MAX_BASE64_SIZE) {
@@ -305,9 +307,11 @@ export function UploadDetailsContent() {
                 // Map the AI response to our dropdown values
                 const mappedMedium = mapLanguageToMedium(result.data.language);
                 const mappedSubject = mapAISubjectToId(result.data.subject);
-                const mappedDocType = uploadType === "jumbled" 
-                  ? mapAIDocumentType(result.data.documentType)
-                  : uploadType;
+                // CRITICAL FIX: Only use AI suggestion if user selected "jumbled"
+                // If user chose specific type (books/notes/papers), respect their choice
+                const mappedDocType = isTypePreselected 
+                  ? uploadType // User's intentional selection - don't override
+                  : mapAIDocumentType(result.data.documentType); // AI suggestion for jumbled
 
                 setFiles((prev) =>
                   prev.map((f) =>
@@ -400,6 +404,12 @@ export function UploadDetailsContent() {
       return;
     }
 
+    // Prevent duplicate uploads - critical fix for 304 error
+    if (isUploading) {
+      toast.error("Upload already in progress. Please wait...");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -431,6 +441,11 @@ export function UploadDetailsContent() {
         const response = await fetch("/api/documents/upload", {
           method: "POST",
           body: formData,
+          cache: "no-cache",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+          },
         });
 
         // Check if response is ok first
@@ -705,14 +720,18 @@ export function UploadDetailsContent() {
                         <div>
                           <Label className="mb-2 block text-sm font-medium text-slate-700">
                             Document Type *
+                            {isTypePreselected && (
+                              <span className="ml-2 text-xs text-slate-500">(locked)</span>
+                            )}
                           </Label>
                           <Select
                             value={file.documentType}
                             onValueChange={(value) =>
                               updateFile(file.id, "documentType", value)
                             }
+                            disabled={isTypePreselected || file.isProcessing}
                           >
-                            <SelectTrigger className="h-11 rounded-lg border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-500 focus:ring-blue-500 [&>span]:text-slate-900">
+                            <SelectTrigger className="h-11 rounded-lg border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-500 focus:ring-blue-500 [&>span]:text-slate-900 disabled:opacity-60 disabled:cursor-not-allowed">
                               <SelectValue placeholder="Select document type" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl bg-white border-slate-200 shadow-lg">

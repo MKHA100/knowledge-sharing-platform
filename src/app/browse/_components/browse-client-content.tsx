@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { SharedNavbar } from "@/components/shared-navbar";
 import { DocumentCard } from "@/components/document-card";
-import { DocumentOverlay } from "@/components/document-overlay";
-import { ThankYouPopup } from "@/components/thank-you-popup";
-import { LoginModal } from "@/components/login-modal";
 import { EmptyState } from "@/components/empty-state";
 import { useApp } from "@/lib/app-context";
 import { api } from "@/lib/api/client";
@@ -30,6 +28,20 @@ import {
   parseBrowseParams,
 } from "@/lib/utils/url-params";
 import type { DocumentWithUploader } from "@/types";
+
+// Dynamically import heavy components - reduces initial bundle by ~50KB
+const DocumentOverlay = dynamic(
+  () => import("@/components/document-overlay").then(mod => ({ default: mod.DocumentOverlay })),
+  { loading: () => null }
+);
+const ThankYouPopup = dynamic(
+  () => import("@/components/thank-you-popup").then(mod => ({ default: mod.ThankYouPopup })),
+  { loading: () => null }
+);
+const LoginModal = dynamic(
+  () => import("@/components/login-modal").then(mod => ({ default: mod.LoginModal })),
+  { loading: () => null }
+);
 
 interface BrowseClientContentProps {
   /** Subject ID from URL params (null for "all subjects") */
@@ -115,33 +127,6 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
           const items: DocumentWithUploader[] = response.data?.items || [];
           setDocuments(items);
           setTotal(response.data?.total || 0);
-
-          // Fetch counts separately for tab badges
-          const countsParams: Record<string, string> = {};
-          if (searchQuery) countsParams.query = searchQuery;
-          if (subjectId && subjectId !== "all") countsParams.subject = subjectId;
-          if (lang !== "all") countsParams.medium = lang;
-          if (sort) countsParams.sortBy = sort;
-          
-          const allDocsResponse = await api.documents.list(countsParams);
-          if (allDocsResponse.success) {
-            const allItems = allDocsResponse.data?.items || [];
-            const bookCount = allItems.filter(
-              (d: DocumentWithUploader) => d.type === "book",
-            ).length;
-            const shortNoteCount = allItems.filter(
-              (d: DocumentWithUploader) => d.type === "short_note",
-            ).length;
-            const paperCount = allItems.filter(
-              (d: DocumentWithUploader) => d.type === "paper",
-            ).length;
-
-            setCounts({
-              books: bookCount,
-              shortNotes: shortNoteCount,
-              papers: paperCount,
-            });
-          }
         } else {
           setError(response.error || "Failed to load documents");
         }
@@ -156,12 +141,33 @@ export function BrowseClientContent({ subjectId }: BrowseClientContentProps) {
     fetchDocuments();
   }, [searchQuery, subjectId, lang, type, sort]);
 
+  // Fetch counts separately using efficient database aggregates
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const params: Record<string, string> = {};
+        if (searchQuery) params.query = searchQuery;
+        if (subjectId && subjectId !== "all") params.subject = subjectId;
+        if (lang !== "all") params.medium = lang;
+
+        const response = await api.documents.counts(params);
+        if (response.success) {
+          setCounts(response.data);
+        }
+      } catch (err) {
+        console.error("Error fetching counts:", err);
+      }
+    };
+
+    fetchCounts();
+  }, [searchQuery, subjectId, lang]);
+
   const selectedSubjectName = subjectId
     ? getSubjectDisplayName(subjectId)
     : null;
 
-  // Get popular subjects to display
-  const popularSubjects = SUBJECTS.slice(0, 20);
+  // Show all subjects for comprehensive filtering
+  const popularSubjects = useMemo(() => SUBJECTS, []);
 
   // Scroll container ref
   const scrollContainerRef = useRef<HTMLDivElement>(null);

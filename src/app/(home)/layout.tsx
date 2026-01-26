@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AppProvider } from "@/lib/app-context";
 import { ToastProvider } from "@/components/toast-provider";
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.lk";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.space";
 
 /**
  * Homepage-specific metadata

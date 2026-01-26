@@ -1,0 +1,39 @@
+{
+  "name": "StudyShare",
+  "description": "Free O-Level study materials for Sri Lankan students - past papers, notes, and textbooks in Sinhala, English, and Tamil",
+  "url": "https://studyshare.space",
+  "logo": "https://studyshare.space/icon-512.png",
+  "contact_email": "",
+  "ai_policy": "allowed",
+  "robots_txt": "https://studyshare.space/robots.txt",
+  "sitemap": "https://studyshare.space/sitemap.xml",
+  "llms_txt": "https://studyshare.space/llms.txt",
+  "llms_full_txt": "https://studyshare.space/llms-full.txt",
+  "llms_json": "https://studyshare.space/llms.json",
+  "documentation": {
+    "overview": "https://studyshare.space/llms.txt",
+    "detailed": "https://studyshare.space/llms-full.txt",
+    "structured": "https://studyshare.space/llms.json"
+  },
+  "features": [
+    "Free O-Level past papers",
+    "Study notes and summaries",
+    "Educational textbooks",
+    "52 subject coverage",
+    "Sinhala, English, Tamil mediums",
+    "Community-driven content"
+  ],
+  "topics": [
+    "O-Level education",
+    "Sri Lankan curriculum",
+    "GCE Ordinary Level",
+    "Past papers",
+    "Study materials",
+    "Free education"
+  ],
+  "primary_language": "en",
+  "supported_languages": ["en", "si", "ta"],
+  "country": "LK",
+  "category": "Education",
+  "type": "Educational Resource Platform"
+}
