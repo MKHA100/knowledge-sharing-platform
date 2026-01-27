@@ -364,7 +364,7 @@ function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-slate-50 py-12">
         <div className="mx-auto max-w-5xl px-4">
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-4">
             {/* Brand */}
             <div>
               <div className="mb-4 flex items-center gap-2">
@@ -395,6 +395,22 @@ function LandingPage() {
                 </Link>
                 <Link href="/faq" className="transition-colors hover:text-slate-900">
                   FAQ
+                </Link>
+              </div>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">Legal</h3>
+              <div className="flex flex-col gap-3 text-sm text-slate-500">
+                <Link href="/terms" className="transition-colors hover:text-slate-900">
+                  Terms of Use
+                </Link>
+                <Link href="/privacy" className="transition-colors hover:text-slate-900">
+                  Privacy Policy
+                </Link>
+                <Link href="/disclaimer" className="transition-colors hover:text-slate-900">
+                  Disclaimer
                 </Link>
               </div>
             </div>

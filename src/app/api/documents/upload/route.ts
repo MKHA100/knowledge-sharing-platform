@@ -8,6 +8,17 @@ import { convertToPdf, isImageFile } from "@/lib/utils/pdf-converter";
 import { generatePDFThumbnail } from "@/lib/utils/thumbnail-generator";
 import type { ApiResponse, Document } from "@/types";
 
+// Configure API Route to accept larger file uploads (50MB)
+// This prevents 413 "Payload Too Large" errors
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "50mb",
+    },
+  },
+  maxDuration: 60, // 60 seconds timeout for file processing
+};
+
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
 
