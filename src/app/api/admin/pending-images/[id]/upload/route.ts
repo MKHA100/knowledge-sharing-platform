@@ -4,6 +4,17 @@ import { auth } from "@clerk/nextjs/server";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2/client";
 import type { ApiResponse } from "@/types";
 
+// Configure API Route to accept larger file uploads (50MB)
+// This prevents 413 "Payload Too Large" errors for admin PDF uploads
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "50mb",
+    },
+  },
+  maxDuration: 60, // 60 seconds timeout for file processing
+};
+
 /**
  * POST /api/admin/pending-images/[id]/upload
  * Admin uploads compiled PDF for a pending image batch
