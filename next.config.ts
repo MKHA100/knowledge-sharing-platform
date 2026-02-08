@@ -6,10 +6,12 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "50mb",
     },
+    // Enable optimized loading
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   // Configure allowed dev origins
   allowedDevOrigins: ["192.168.1.8"],
-  // Images configuration
+  // Images configuration with optimization
   images: {
     remotePatterns: [
       {
@@ -17,8 +19,13 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
+    formats: ['image/avif', 'image/webp'], // Modern formats for better compression
+    minimumCacheTTL: 60, // Cache images for 60 seconds minimum
   },
-
+  // Compression
+  compress: true,
+  // Disable powered-by header for security
+  poweredByHeader: false,
 };
 
 export default nextConfig;
