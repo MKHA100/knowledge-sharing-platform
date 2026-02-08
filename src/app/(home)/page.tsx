@@ -119,6 +119,7 @@ function LandingPage() {
       <LandingNavbar />
 
       {/* Hero Section */}
+      <main>
       <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pb-16 pt-32">
         {/* Decorative Elements */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -161,10 +162,11 @@ function LandingPage() {
                 />
                 <button
                   type="submit"
+                  aria-label="Search for study materials"
                   className="flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-6 font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30"
                 >
                   <span className="hidden sm:inline">Search</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -179,6 +181,7 @@ function LandingPage() {
                   key={item}
                   type="button"
                   onClick={() => router.push(`/browse?q=${item.toLowerCase()}`)}
+                  aria-label={`Search for ${item}`}
                   className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-600 transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                 >
                   {item}
@@ -230,6 +233,7 @@ function LandingPage() {
                   type="button"
                   key={category.id}
                   onClick={() => handleCategoryClick(category.id)}
+                  aria-label={`Browse ${category.name} study materials`}
                   className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-100"
                 >
                   <div
@@ -360,6 +364,7 @@ function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-slate-50 py-12">
@@ -462,7 +467,7 @@ function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-8 border-t border-slate-200 pt-8 text-center text-sm text-slate-400">
+          <div className="mt-8 border-t border-slate-200 pt-8 text-center text-sm text-slate-600">
             Made with care for Sri Lankan students
           </div>
         </div>
