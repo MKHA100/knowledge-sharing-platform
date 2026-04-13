@@ -130,9 +130,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: baseUrl,
-  },
   // Search Console Verification
   // Add your verification codes from Google/Bing after registering
   verification: {

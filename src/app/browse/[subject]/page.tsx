@@ -60,6 +60,14 @@ export async function generateMetadata({ params }: SubjectPageProps): Promise<Me
       title: `${displayName} Study Materials - StudyShare`,
       description: `Browse and download ${displayName} O-Level study materials for Sri Lankan students`,
       type: "website",
+      url: `${baseUrl}/browse/${slug}`,
+    },
+    alternates: {
+      canonical: `${baseUrl}/browse/${slug}`,
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }
