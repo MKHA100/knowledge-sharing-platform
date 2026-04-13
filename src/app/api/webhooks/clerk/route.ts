@@ -44,17 +44,46 @@ export async function POST(req: Request) {
       const { id, email_addresses, first_name, last_name, image_url } =
         evt.data;
 
-      const { error } = await supabase.from("users").insert({
-        clerk_id: id,
-        email: email_addresses[0]?.email_address || "",
-        name: `${first_name || ""} ${last_name || ""}`.trim() || "Anonymous",
-        avatar_url: image_url,
-        role: "user",
-      });
+      const email = email_addresses[0]?.email_address || "";
+      const name =
+        `${first_name || ""} ${last_name || ""}`.trim() || "Anonymous";
 
-      if (error) {
-        console.error("Failed to create user:", error);
-        return new NextResponse("Failed to create user", { status: 500 });
+      // Check if a row already exists for this email (migrated dev-instance user).
+      // If so, update the clerk_id in place to preserve all historical data
+      // (documents, comments, votes, etc.) instead of creating a duplicate row.
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("id, clerk_id")
+        .eq("email", email)
+        .single();
+
+      if (existingUser) {
+        // Re-link: stamp the new production clerk_id onto the existing row
+        const { error } = await supabase
+          .from("users")
+          .update({ clerk_id: id, avatar_url: image_url, name })
+          .eq("id", existingUser.id);
+
+        if (error) {
+          console.error("Failed to re-link migrated user:", error);
+          return new NextResponse("Failed to re-link migrated user", {
+            status: 500,
+          });
+        }
+      } else {
+        // Brand-new user — insert as normal
+        const { error } = await supabase.from("users").insert({
+          clerk_id: id,
+          email,
+          name,
+          avatar_url: image_url,
+          role: "user",
+        });
+
+        if (error) {
+          console.error("Failed to create user:", error);
+          return new NextResponse("Failed to create user", { status: 500 });
+        }
       }
       break;
     }
