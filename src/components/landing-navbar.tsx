@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { BookOpen, Upload, User, Menu, X } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { BookOpen, Upload, User, Menu, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -15,6 +17,8 @@ import { useApp } from "@/lib/app-context";
 
 export function LandingNavbar() {
   const { isLoggedIn, setShowLoginModal, user } = useApp();
+  const { signOut } = useClerk();
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -112,6 +116,17 @@ export function LandingNavbar() {
                       Settings
                     </Link>
                   </DropdownMenuItem>
+                  <div className="my-1 border-t border-slate-100" />
+                  <DropdownMenuItem asChild>
+                    <button
+                      type="button"
+                      onClick={() => signOut(() => router.push("/"))}
+                      className="w-full cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors font-medium px-3 py-2.5 rounded-lg flex items-center gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -172,7 +187,16 @@ export function LandingNavbar() {
                 Notes
               </Link>
               <div className="my-2 border-t border-slate-200" />
-              {!isLoggedIn && (
+              {isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); signOut(() => router.push("/")); }}
+                  className="rounded-xl px-4 py-3 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={() => {

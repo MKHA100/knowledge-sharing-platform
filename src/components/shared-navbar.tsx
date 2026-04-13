@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import {
   BookOpen,
   User,
@@ -11,6 +12,7 @@ import {
   X,
   ArrowLeft,
   Search,
+  LogOut,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,8 @@ export function SharedNavbar({
 }: SharedNavbarProps) {
   const { isLoggedIn, setShowLoginModal } = useApp();
   const { user } = useUser();
+  const { signOut } = useClerk();
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -172,6 +176,17 @@ export function SharedNavbar({
                       Settings
                     </Link>
                   </DropdownMenuItem>
+                  <div className="my-1 border-t border-slate-100" />
+                  <DropdownMenuItem asChild>
+                    <button
+                      type="button"
+                      onClick={() => signOut(() => router.push("/"))}
+                      className="w-full cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors font-medium px-3 py-2.5 rounded-lg flex items-center gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -232,7 +247,16 @@ export function SharedNavbar({
                 Notes
               </Link>
               <div className="my-2 border-t border-slate-200" />
-              {!isLoggedIn && (
+              {isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); signOut(() => router.push("/")); }}
+                  className="rounded-xl px-4 py-3 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={() => {
