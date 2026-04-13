@@ -12,12 +12,12 @@ import {
 } from "@/components/structured-data";
 import "./globals.css";
 
-const _geist = Geist({ 
+const _geist = Geist({
   subsets: ["latin"],
   display: "swap", // Optimize font loading
   preload: true,
 });
-const _geistMono = Geist_Mono({ 
+const _geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap", // Optimize font loading
   preload: true,
@@ -28,7 +28,8 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://studyshare.space";
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "StudyShare - Free O-Level Study Materials for Sri Lankan Students",
+    default:
+      "StudyShare - Free O-Level Study Materials for Sri Lankan Students",
     template: "%s | StudyShare",
   },
   description:
@@ -141,7 +142,8 @@ export const metadata: Metadata = {
   },
   other: {
     // Additional SEO hints
-    "google-site-verification": process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
+    "google-site-verification":
+      process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
     "theme-color": "#3b82f6",
   },
 };
@@ -157,12 +159,19 @@ export default function RootLayout({
         <head>
           {/* Resource Hints for Performance */}
           <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link
+            rel="preconnect"
+            href="https://fonts.gstatic.com"
+            crossOrigin="anonymous"
+          />
           <link rel="dns-prefetch" href="https://us.i.posthog.com" />
           <link rel="dns-prefetch" href="https://accounts.dev" />
-          <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL || ""} />
+          <link
+            rel="dns-prefetch"
+            href={process.env.NEXT_PUBLIC_SUPABASE_URL || ""}
+          />
           <link rel="dns-prefetch" href={process.env.R2_PUBLIC_URL || ""} />
-          
+
           {/* Structured Data for SEO */}
           <JsonLd data={generateWebsiteSchema(baseUrl)} />
           <JsonLd data={generateOrganizationSchema(baseUrl)} />
